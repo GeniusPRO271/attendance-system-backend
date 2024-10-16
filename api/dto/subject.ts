@@ -1,3 +1,5 @@
+import type { GroupDTO } from "./group";
+import type { LessonDTO } from "./lesson";
 
 export interface SubjectDetailsDTO {
   id: string;

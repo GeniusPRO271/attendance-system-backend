@@ -6,6 +6,7 @@ import type { updateStudentSchemaType, updateUserSchemaType } from "../zod/updat
 
 export interface UserService {
   getSpecificFromUUID(uuid: string): Promise<UserDetailDTO>
+  getSpecificFromEmail(email: string): Promise<UserDetailDTO>
   getSpecificFromTeacherUUID(uuid: string): Promise<UserDetailDTO>
   getSpecificFromStudentUUID(uuid: string): Promise<UserDetailDTO>
   deleteSpecificFromUUID(uuid: string): Promise<UserDetailDTO>
@@ -22,6 +23,21 @@ export class UserServiceClass implements UserService {
 
   async getSpecificFromUUID(uuid: string): Promise<UserDetailDTO> {
     const userInfo = await this.db.select().from(UserTable).where(eq(UserTable.id, uuid)).then(res => res[0])
+    const teacherInfo = await this.db.select().from(TeacherTable).where(eq(TeacherTable.user_id, userInfo.id)).then(res => res[0])
+    const studentInfo = await this.db.select().from(StudentTable).where(eq(StudentTable.user_id, userInfo.id)).then(res => res[0])
+
+    const specificUser: UserDetailDTO = {
+      ...userInfo,
+      role: UserRole[userInfo.role as keyof typeof UserRole],
+      studentInfo,
+      teacherInfo
+    }
+
+    return specificUser
+  }
+
+  async getSpecificFromEmail(email: string): Promise<UserDetailDTO> {
+    const userInfo = await this.db.select().from(UserTable).where(eq(UserTable.email, email)).then(res => res[0])
     const teacherInfo = await this.db.select().from(TeacherTable).where(eq(TeacherTable.user_id, userInfo.id)).then(res => res[0])
     const studentInfo = await this.db.select().from(StudentTable).where(eq(StudentTable.user_id, userInfo.id)).then(res => res[0])
 

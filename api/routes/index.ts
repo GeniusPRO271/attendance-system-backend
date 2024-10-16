@@ -1,3 +1,7 @@
 export { GroupRoute } from "./group"
 export { DirectionRoute } from "./direction"
 export { FacultyRoute } from "./faculty"
+export { UserRoute } from "./user"
+export { AuthRoute } from "./auth"
+export { LessonRoute } from "./lesson"
+export { SubjectRoute } from "./subject"
