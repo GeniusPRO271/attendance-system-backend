@@ -1,7 +1,6 @@
 import { relations } from "drizzle-orm";
 import { pgTable, text, integer, uuid, timestamp, primaryKey } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
-import { useFormStatus } from "hono/jsx/dom";
 
 // Faculty Model
 export const FacultyTable = pgTable("faculties", {

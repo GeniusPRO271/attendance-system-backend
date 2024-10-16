@@ -2,14 +2,14 @@ import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import { UserServiceClass, type UserService } from "../service"
 import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
-import { createUserSchema, type createStudentSchemaType, type createTeacherSchemaType } from "../zod/create_schema"
-import { insertStudentSchema, insertTeacherSchema, insertUserSchema, StudentTable, TeacherTable, UserTable } from "../db/schema/tables"
-import { StudentBuilder, TeacherBuilder, UserBuilder } from "../builders"
+import { createUserSchema } from "../zod/create_schema"
+import { TeacherTable } from "../db/schema/tables"
+import { UserBuilder } from "../builders"
 import { validateUUID } from "../zod/select_schema"
 import { updateStudentSchema, updateUserSchema } from "../zod/update_schema"
 import { db } from "../db"
 
-function startSubjectRoute(service: UserService, db: PostgresJsDatabase<Record<string, never>>) {
+function startUserRoute(service: UserService, db: PostgresJsDatabase<Record<string, never>>) {
 
   const api = new Hono()
 
@@ -104,6 +104,6 @@ function startSubjectRoute(service: UserService, db: PostgresJsDatabase<Record<s
 }
 
 const service = new UserServiceClass(db)
-const UserRoute = startSubjectRoute(service, db)
+const UserRoute = startUserRoute(service, db)
 
 export { UserRoute }

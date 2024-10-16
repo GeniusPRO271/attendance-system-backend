@@ -1,5 +1,3 @@
-import type { UserRole } from "../service/dto"
-
 export interface UserDetailDTO {
   id: string
   name: string
@@ -31,5 +29,10 @@ export interface StudentDTO {
 
 export interface TeacherDTO {
   id: string
+}
+
+export enum UserRole {
+  Default = 'default',
+  Admin = 'admin',
 }
 

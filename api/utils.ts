@@ -1,5 +1,3 @@
-import type { GroupDTO } from "./service/dto";
-
 // Helper function to check if the date is today
 export function isToday(date: Date): boolean {
   const today = new Date();

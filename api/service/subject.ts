@@ -1,9 +1,9 @@
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import { GroupTable, LessonTable, subjectsToGroupsTable, SubjectTable } from "../db/schema/tables"
 import { eq, inArray } from 'drizzle-orm';
-import type { SubjectDetailsDTO } from "./dto";
 import type { updateSubjectSchemaType } from "../zod/update_schema";
 import { isNextWeek, isThisWeek, isToday } from "../utils";
+import type { SubjectDetailsDTO } from "../dto/subject";
 
 export interface SubjectService {
   getSpecificFromUUID(uuid: string): Promise<SubjectDetailsDTO>

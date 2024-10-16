@@ -1,8 +1,7 @@
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
-import type { UserDetailDTO } from "../dto/user"
+import { UserRole, type UserDetailDTO } from "../dto/user"
 import { StudentTable, TeacherTable, UserTable } from "../db/schema/tables"
 import { eq } from 'drizzle-orm';
-import { UserRole } from "./dto";
 import type { updateStudentSchemaType, updateUserSchemaType } from "../zod/update_schema";
 
 export interface UserService {

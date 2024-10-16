@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { UserRole } from "../service/dto";
+import { UserRole } from "../dto/user";
 
 export const createGroupSchema = z.object({
   group_name: z.string(),

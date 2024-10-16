@@ -20,7 +20,7 @@ const apiRoutes = api.basePath("/api")
   .route('/user', UserRoute)
   .post('/', (c) => {
     return c.text(
-      "Education service up and running! ",
+      "Api service up and running! ",
     )
   })
 

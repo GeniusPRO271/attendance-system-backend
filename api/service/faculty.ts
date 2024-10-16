@@ -1,9 +1,9 @@
 
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
-import type { FacultyDTO } from "./dto"
 import { DirectionTable, FacultyTable } from "../db/schema/tables"
 import { eq } from 'drizzle-orm';
 import type { updateFacultyType } from "../zod/update_schema";
+import type { FacultyDTO } from "../dto/faculty";
 
 export interface FacultyService {
   getSpecificFromUUID(uuid: string): Promise<FacultyDTO>

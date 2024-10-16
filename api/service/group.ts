@@ -1,8 +1,8 @@
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
-import type { GroupDTO } from "./dto"
 import { GroupTable } from "../db/schema/tables"
 import { eq } from 'drizzle-orm';
 import type { updateGroupType } from "../zod/update_schema";
+import type { GroupDTO } from "../dto/group";
 
 export interface GroupService {
   getSpecificFromUUID(uuid: string): Promise<GroupDTO>

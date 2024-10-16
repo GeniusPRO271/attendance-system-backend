@@ -2,11 +2,11 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import type { createStudentSchemaType, createTeacherSchemaType, createUserSchemaType } from '../zod/create_schema';
-import type { UserRole } from '../service/dto';
 import { insertStudentSchema, insertTeacherSchema, insertUserSchema, StudentTable, TeacherTable, UserTable } from '../db/schema/tables';
 import { TeacherBuilder } from './teacher';
 import { StudentBuilder } from './student';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
+import type { UserRole } from '../dto/user';
 
 export class UserBuilder {
   id: string;

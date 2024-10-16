@@ -1,8 +1,8 @@
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
-import type { DirectionDTO } from "./dto"
 import { DirectionTable, GroupTable } from "../db/schema/tables"
 import { eq } from 'drizzle-orm';
 import type { updateDirectionType } from "../zod/update_schema";
+import type { DirectionDTO } from "../dto/direction";
 
 export interface DirectionService {
   getSpecificFromUUID(uuid: string): Promise<DirectionDTO>
