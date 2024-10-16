@@ -1,0 +1,6 @@
+export { type GroupService, GroupServiceClass } from "./group"
+export { type DirectionService, DirectionServiceClass } from "./direction"
+export { type FacultyService, FacultyServiceClass } from "./faculty"
+export { type SubjectService, SubjectServiceClass } from "./subject"
+export { type LessonService, LessonServiceClass } from "./lesson"
+export { type UserService, UserServiceClass } from "./user"
