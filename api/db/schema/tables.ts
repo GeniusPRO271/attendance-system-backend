@@ -1,6 +1,15 @@
 import { relations } from "drizzle-orm";
-import { pgTable, text, integer, uuid, timestamp, primaryKey } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, uuid, timestamp, primaryKey, varchar, date } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
+
+
+// Student Attendance Model
+export const StudentAttendanceTable = pgTable('student_attendance', {
+  id: uuid('id').primaryKey(),
+  lessonId: uuid('lesson_id'),
+  studentId: uuid('student_id'),
+  status: varchar('status', { length: 50 }).notNull(),
+});
 
 // Faculty Model
 export const FacultyTable = pgTable("faculties", {
@@ -116,12 +125,12 @@ export const userRelation = relations(UserTable, ({ one }) => ({
   }),
 }));
 
-export const subjectManyRelations = relations(SubjectTable, ({ many }) => ({
+export const subjectRelations = relations(SubjectTable, ({ many }) => ({
   classes: many(LessonTable),
   subjectsTogroups: many(subjectsToGroupsTable),
 }));
 
-export const lessonOneRelations = relations(LessonTable, ({ one }) => ({
+export const lessonRelations = relations(LessonTable, ({ one, many }) => ({
   subject: one(SubjectTable, {
     fields: [LessonTable.subject_id],
     references: [SubjectTable.id],
@@ -130,6 +139,7 @@ export const lessonOneRelations = relations(LessonTable, ({ one }) => ({
     fields: [LessonTable.group_id],
     references: [GroupTable.id],
   }),
+  studentAttendances: many(StudentAttendanceTable)
 }));
 
 
@@ -172,6 +182,18 @@ export const subjectsToGroupsRelations = relations(subjectsToGroupsTable, ({ one
   }),
 }));
 
+export const studentAttendanceRelations = relations(StudentAttendanceTable, ({ one }) => ({
+  lesson: one(LessonTable, {
+    fields: [StudentAttendanceTable.lessonId],
+    references: [LessonTable.id],
+  }),
+
+  student: one(StudentTable, {
+    fields: [StudentAttendanceTable.studentId],
+    references: [StudentTable.id],
+  }),
+}));
+
 export const insertGroupSchema = createInsertSchema(GroupTable);
 export const insertSubjectToGroupSchema = createInsertSchema(subjectsToGroupsTable);
 export const insertDirectionSchema = createInsertSchema(DirectionTable);
@@ -181,3 +203,4 @@ export const insertLessonSchema = createInsertSchema(LessonTable);
 export const insertUserSchema = createInsertSchema(UserTable);
 export const insertStudentSchema = createInsertSchema(StudentTable);
 export const insertTeacherSchema = createInsertSchema(TeacherTable);
+export const insertStudentAttendanceSchema = createInsertSchema(StudentAttendanceTable);

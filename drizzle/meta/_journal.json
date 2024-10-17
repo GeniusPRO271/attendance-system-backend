@@ -8,6 +8,13 @@
       "when": 1728459422954,
       "tag": "0000_careful_madame_masque",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1729144718396,
+      "tag": "0001_nasty_shinko_yamashiro",
+      "breakpoints": true
     }
   ]
 }
