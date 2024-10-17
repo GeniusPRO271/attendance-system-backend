@@ -45,9 +45,6 @@ function startAuthRoute(auth: AuthService, service: UserService, db: PostgresJsD
       const { email, password } = c.req.valid("json")
       const { password: storedPassword, id } = await service.getSpecificFromEmail(email)
 
-      console.log("storedPassword: ", storedPassword)
-      console.log("id: ", id)
-
       const isPasswordValid = await bcrypt.compare(password, storedPassword);
       if (!storedPassword || !isPasswordValid) {
         return c.json({ message: 'Invalid credentials' }, 401);
@@ -72,8 +69,9 @@ function startAuthRoute(auth: AuthService, service: UserService, db: PostgresJsD
 
     try {
       const tokens = await auth.readTokens(id);
+      const isRefreshValid = await auth.verifyRefreshToken(id)
 
-      if (tokens.refreshToken !== refreshToken) {
+      if (tokens.refreshToken !== refreshToken || !isRefreshValid.valid) {
         return c.json({ message: 'Invalid refresh token' }, 401);
       }
 

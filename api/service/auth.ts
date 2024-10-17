@@ -1,9 +1,10 @@
-import { SECRET_KEY, TOKEN_EXPIRATION_TIME, REFRESH_TOKEN_EXPIRATION_TIME } from "../config";
+import { SECRET_KEY, TOKEN_EXPIRATION_TIME, REFRESH_TOKEN_EXPIRATION_TIME, REFRESH_SECRET_KEY } from "../config";
 import jwt from 'jsonwebtoken';
 import type { AuthDTO, TokenDTO } from "../dto/auth";
 
 export interface AuthService {
   verifyToken(uuid: string): Promise<AuthDTO>
+  verifyRefreshToken(uuid: string): Promise<AuthDTO>
   generateTokens(uuid: string): Promise<TokenDTO>
   readTokens(uuid: string): Promise<TokenDTO>
   deleteTokens(uuid: string): boolean
@@ -32,10 +33,25 @@ export class AuthServiceClass implements AuthService {
     }
   }
 
+  async verifyRefreshToken(uuid: string): Promise<AuthDTO> {
+    const tokens = this.tokenStore.get(uuid);
+
+    if (!tokens || !tokens.refreshToken) {
+      return { valid: false, message: 'Refresh token not found' };
+    }
+
+    try {
+      jwt.verify(tokens.refreshToken, REFRESH_SECRET_KEY);
+      return { valid: true, message: 'Token is valid' };
+    } catch (error) {
+      return { valid: false, message: 'Invalid or expired token' };
+    }
+  }
+
   // Generates a new access token and refresh token for the provided UUID and stores them
   async generateTokens(uuid: string): Promise<TokenDTO> {
     const accessToken = jwt.sign({ uuid }, SECRET_KEY, { expiresIn: TOKEN_EXPIRATION_TIME });
-    const refreshToken = jwt.sign({ uuid }, SECRET_KEY, { expiresIn: REFRESH_TOKEN_EXPIRATION_TIME });
+    const refreshToken = jwt.sign({ uuid }, REFRESH_SECRET_KEY, { expiresIn: REFRESH_TOKEN_EXPIRATION_TIME });
 
     this.tokenStore.set(uuid, { accessToken, refreshToken });
 
