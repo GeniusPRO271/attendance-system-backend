@@ -7,7 +7,7 @@ export class FacultyBuilder {
   dean: string
 
   constructor(body: createFacultySchemaType) {
-    this.id = uuidv4()
+    this.id = crypto.randomUUID()
     this.name = body.name
     this.dean = body.dean
   }

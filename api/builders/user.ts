@@ -29,7 +29,7 @@ export class UserBuilder {
 
 
   static async create(body: createUserSchemaType, db: PostgresJsDatabase<Record<string, never>>): Promise<UserBuilder> {
-    const userId = uuidv4()
+    const userId = crypto.randomUUID()
     let studentId
     let teacherId
     if (body.isTeacher) {

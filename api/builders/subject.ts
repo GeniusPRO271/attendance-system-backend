@@ -7,7 +7,7 @@ export class SubjectBuilder {
   description: string
 
   constructor(body: createSubjectSchemaType) {
-    this.id = uuidv4();
+    this.id = crypto.randomUUID()
     this.name = body.name;
     this.description = body.description
   }

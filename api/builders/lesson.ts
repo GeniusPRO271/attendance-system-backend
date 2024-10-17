@@ -10,7 +10,7 @@ export class LessonBuilder {
   end_time: Date;
 
   constructor(body: createLessonSchemaType) {
-    this.id = uuidv4();
+    this.id = crypto.randomUUID()
     this.subject_id = body.subject_id;
     this.teacher_id = body.teacher_id;
     this.group_id = body.group_id;
