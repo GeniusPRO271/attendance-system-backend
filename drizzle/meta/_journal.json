@@ -15,6 +15,13 @@
       "when": 1729144718396,
       "tag": "0001_nasty_shinko_yamashiro",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1729150374754,
+      "tag": "0002_soft_azazel",
+      "breakpoints": true
     }
   ]
 }

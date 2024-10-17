@@ -6,8 +6,8 @@ import { createInsertSchema } from "drizzle-zod";
 // Student Attendance Model
 export const StudentAttendanceTable = pgTable('student_attendance', {
   id: uuid('id').primaryKey(),
-  lessonId: uuid('lesson_id'),
-  studentId: uuid('student_id'),
+  lesson_id: uuid('lesson_id').notNull(),
+  student_id: uuid('student_id').notNull(),
   status: varchar('status', { length: 50 }).notNull(),
 });
 
@@ -184,12 +184,12 @@ export const subjectsToGroupsRelations = relations(subjectsToGroupsTable, ({ one
 
 export const studentAttendanceRelations = relations(StudentAttendanceTable, ({ one }) => ({
   lesson: one(LessonTable, {
-    fields: [StudentAttendanceTable.lessonId],
+    fields: [StudentAttendanceTable.lesson_id],
     references: [LessonTable.id],
   }),
 
   student: one(StudentTable, {
-    fields: [StudentAttendanceTable.studentId],
+    fields: [StudentAttendanceTable.student_id],
     references: [StudentTable.id],
   }),
 }));

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { UserRole } from "../dto/user";
+import { AttendanceStatus } from "../dto/studentAttendance";
 
 export const createGroupSchema = z.object({
   group_name: z.string(),
@@ -77,4 +78,13 @@ export const createStudentSchema = z.object({
 });
 
 export type createStudentSchemaType = z.infer<typeof createStudentSchema>;
+
+export const createStudentAttendanceSchema = z.object({
+  lesson_id: z.string().uuid(),
+  student_id: z.string().uuid(),
+  status: z.nativeEnum(AttendanceStatus)
+});
+
+export type createStudentAttendanceType = z.infer<typeof createStudentAttendanceSchema>;
+
 
