@@ -1,5 +1,11 @@
 import { z } from "zod";
 
+export const validateEmail = z.object({
+  email: z.string().email(),
+});
+
+export type validateEmailType = z.infer<typeof validateEmail>;
+
 export const validateUUID = z.object({
   uuid: z.string().uuid(),
 });

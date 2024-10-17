@@ -5,7 +5,7 @@ import { zValidator } from "@hono/zod-validator"
 import { createUserSchema } from "../zod/create_schema"
 import { TeacherTable } from "../db/schema/tables"
 import { UserBuilder } from "../builders"
-import { validateUUID } from "../zod/select_schema"
+import { validateEmail, validateUUID } from "../zod/select_schema"
 import { updateStudentSchema, updateUserSchema } from "../zod/update_schema"
 import { db } from "../db"
 
@@ -45,6 +45,16 @@ function startUserRoute(service: UserService, db: PostgresJsDatabase<Record<stri
     })
   })
 
+
+  // Get a specific User
+  api.get("/info/:email", zValidator("param", validateEmail), async (c) => {
+    const userEmail = c.req.valid("param").email
+    const user = await service.getSpecificFromEmail(userEmail)
+    return c.json({
+      message: "specific user data requested",
+      data: user
+    })
+  })
 
   // Get a specific student
   api.get("/student/:uuid", zValidator("param", validateUUID), async (c) => {

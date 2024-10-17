@@ -49,7 +49,7 @@ export type createLessonSchemaType = z.infer<typeof createLessonSchema>;
 export const createSubjectSchema = z.object({
   name: z.string(),
   description: z.string(),
-  group_Id: z.string().uuid().optional()
+  group_ids: z.array(z.string().uuid()).optional()  // Changed this to allow an array of UUIDs
 });
 
 export type createSubjectSchemaType = z.infer<typeof createSubjectSchema>;

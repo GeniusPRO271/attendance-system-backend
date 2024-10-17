@@ -13,30 +13,35 @@ function startSubjectRoute(service: SubjectService, db: PostgresJsDatabase<Recor
 
   const api = new Hono()
 
-  // Create a new subject 
   api.post('/', zValidator("json", createSubjectSchema), async (c) => {
-    const body = c.req.valid("json")
+    const body = c.req.valid("json");
 
-    const new_subject = insertSubjectSchema.parse(new SubjectBuilder(body))
+    // Create the new subject using the body data
+    const new_subject = new SubjectBuilder(body);
+    const validated_subject = insertSubjectSchema.parse(new_subject);
 
-    if (body.group_Id) {
-      const relationSubjectGroupBody = {
-        subject_id: new_subject.id,
-        group_id: body.group_Id
+    // Insert the new subject into the database
+    await db.insert(SubjectTable).values(validated_subject);
+
+    // If group_ids exist, insert the relations between subject and groups
+    if (body.group_ids && body.group_ids.length > 0) {
+      for (const groupId of body.group_ids) {
+        const relationSubjectGroupBody = {
+          subject_id: validated_subject.id,
+          group_id: groupId
+        };
+
+        // Validate and insert the relation into the subjectsToGroupsTable
+        const relationSubjectGroup = insertSubjectToGroupSchema.parse(relationSubjectGroupBody);
+        await db.insert(subjectsToGroupsTable).values(relationSubjectGroup);
       }
-
-      const relationSubjectGroup = insertSubjectToGroupSchema.parse(relationSubjectGroupBody)
-      await db.insert(subjectsToGroupsTable).values(relationSubjectGroup)
-
     }
 
-    await db.insert(SubjectTable).values(new_subject)
-
     return c.json({
-      "message": "new classes added",
-      "data": new_subject
-    })
-  })
+      "message": "New subject added with associated groups",
+      "data": validated_subject
+    });
+  });
 
   // Get all subjects
   api.get('/', async (c) => {
