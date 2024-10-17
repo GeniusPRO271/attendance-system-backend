@@ -1,5 +1,4 @@
 import type { createFacultySchemaType } from "../zod/create_schema"
-import { v4 as uuidv4 } from 'uuid';
 
 export class FacultyBuilder {
   id: string

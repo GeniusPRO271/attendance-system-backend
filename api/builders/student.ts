@@ -1,5 +1,3 @@
-
-import { v4 as uuidv4 } from 'uuid';
 import type { createStudentSchemaType } from '../zod/create_schema';
 
 export class StudentBuilder {
@@ -8,7 +6,7 @@ export class StudentBuilder {
   group_id: string;
 
   constructor(body: createStudentSchemaType) {
-    this.id = uuidv4();
+    this.id = crypto.randomUUID()
     this.user_id = body.user_id;
     this.group_id = body.group_id;
   }

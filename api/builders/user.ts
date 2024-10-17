@@ -1,6 +1,3 @@
-
-
-import { v4 as uuidv4 } from 'uuid';
 import type { createStudentSchemaType, createTeacherSchemaType, createUserSchemaType } from '../zod/create_schema';
 import { insertStudentSchema, insertTeacherSchema, insertUserSchema, StudentTable, TeacherTable, UserTable } from '../db/schema/tables';
 import { TeacherBuilder } from './teacher';
@@ -34,7 +31,6 @@ export class UserBuilder {
     let teacherId
     if (body.isTeacher) {
 
-      console.log("create Teacher")
       let teacherValues: createTeacherSchemaType = {
         user_id: userId
       }
@@ -46,7 +42,6 @@ export class UserBuilder {
     }
     if (body.group_id) {
 
-      console.log("create User")
       let studentValues: createStudentSchemaType = {
         user_id: userId,
         group_id: body.group_id
