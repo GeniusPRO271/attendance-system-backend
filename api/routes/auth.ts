@@ -10,6 +10,7 @@ import { UserBuilder } from "../builders"
 import bcrypt from 'bcrypt';
 import { loginUserSchema, refreshTokenSchema } from "../zod/auth_schema"
 import { UserServiceClass, type UserService } from "../service"
+import { REFRESH_SECRET_KEY } from "../config"
 
 function startAuthRoute(auth: AuthService, service: UserService, db: PostgresJsDatabase<Record<string, never>>) {
   const api = new Hono()
@@ -65,9 +66,10 @@ function startAuthRoute(auth: AuthService, service: UserService, db: PostgresJsD
 
   // Refresh token route
   api.post('/refresh-token', zValidator("json", refreshTokenSchema), async (c) => {
-    const { id, refreshToken } = c.req.valid("json")
+    const { refreshToken } = c.req.valid("json")
 
     try {
+      const id = auth.extractUUIDFromToken(refreshToken, REFRESH_SECRET_KEY)
       const tokens = await auth.readTokens(id);
       const isRefreshValid = await auth.verifyRefreshToken(id)
 

@@ -8,7 +8,6 @@ export const loginUserSchema = z.object({
 export type loginUserSchemaType = z.infer<typeof loginUserSchema>;
 
 export const refreshTokenSchema = z.object({
-  id: z.string().uuid(),
   refreshToken: z.string(),
 });
 

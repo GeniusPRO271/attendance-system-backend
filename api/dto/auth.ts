@@ -13,3 +13,7 @@ export interface LoginDTO {
   emai: string
   password: string
 }
+
+export interface TokenPayload {
+  uuid: string;
+}

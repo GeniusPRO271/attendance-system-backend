@@ -1,11 +1,12 @@
 import { SECRET_KEY, TOKEN_EXPIRATION_TIME, REFRESH_TOKEN_EXPIRATION_TIME, REFRESH_SECRET_KEY } from "../config";
 import jwt from 'jsonwebtoken';
-import type { AuthDTO, TokenDTO } from "../dto/auth";
+import type { AuthDTO, TokenDTO, TokenPayload } from "../dto/auth";
 
 export interface AuthService {
   verifyToken(uuid: string): Promise<AuthDTO>
   verifyRefreshToken(uuid: string): Promise<AuthDTO>
   generateTokens(uuid: string): Promise<TokenDTO>
+  extractUUIDFromToken(token: string, key: string): string
   readTokens(uuid: string): Promise<TokenDTO>
   deleteTokens(uuid: string): boolean
 }
@@ -75,6 +76,12 @@ export class AuthServiceClass implements AuthService {
       refreshToken: tokens.refreshToken,
       expiresIn: this.getAccessTokenExpirationTime(),
     };
+  }
+
+  extractUUIDFromToken(token: string, key: string): string {
+    const decoded = jwt.verify(token, key) as TokenPayload;
+
+    return decoded.uuid;
   }
 
   deleteTokens(uuid: string): boolean {
