@@ -1,14 +1,15 @@
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
-import { UserRole, type UserDetailDTO } from "../dto/user"
+import { UserRole, type StudentDetailDTO, type UserDetailAuthDTO, type UserDetailDTO } from "../dto/user"
 import { StudentTable, TeacherTable, UserTable } from "../db/schema/tables"
 import { eq } from 'drizzle-orm';
 import type { updateStudentSchemaType, updateUserSchemaType } from "../zod/update_schema";
 
 export interface UserService {
   getSpecificFromUUID(uuid: string): Promise<UserDetailDTO>
-  getSpecificFromEmail(email: string): Promise<UserDetailDTO>
+  getSpecificFromEmail(email: string): Promise<UserDetailAuthDTO>
   getSpecificFromTeacherUUID(uuid: string): Promise<UserDetailDTO>
   getSpecificFromStudentUUID(uuid: string): Promise<UserDetailDTO>
+  getAllFromGroupUUID(uuid: string): Promise<StudentDetailDTO[]>
   deleteSpecificFromUUID(uuid: string): Promise<UserDetailDTO>
   updateSpecificFromUUID(uuid: string, values: updateUserSchemaType): Promise<UserDetailDTO>
   updateSpecificStudentFromUUID(uuid: string, values: updateStudentSchemaType): Promise<UserDetailDTO | undefined>
@@ -22,28 +23,31 @@ export class UserServiceClass implements UserService {
   }
 
   async getSpecificFromUUID(uuid: string): Promise<UserDetailDTO> {
-    const userInfo = await this.db.select().from(UserTable).where(eq(UserTable.id, uuid)).then(res => res[0])
+    const userInfo = await this.db.select().from(UserTable).where(eq(UserTable.id, uuid)).then(res => {
+      const { password, ...userWithoutPassword } = res[0];
+      return userWithoutPassword;
+    });
     const teacherInfo = await this.db.select().from(TeacherTable).where(eq(TeacherTable.user_id, userInfo.id)).then(res => res[0])
     const studentInfo = await this.db.select().from(StudentTable).where(eq(StudentTable.user_id, userInfo.id)).then(res => res[0])
 
     const specificUser: UserDetailDTO = {
       ...userInfo,
-      role: UserRole[userInfo.role as keyof typeof UserRole],
       studentInfo,
-      teacherInfo
+      teacherInfo,
+
     }
 
     return specificUser
   }
 
-  async getSpecificFromEmail(email: string): Promise<UserDetailDTO> {
+  async getSpecificFromEmail(email: string): Promise<UserDetailAuthDTO> {
     const userInfo = await this.db.select().from(UserTable).where(eq(UserTable.email, email)).then(res => res[0])
+
     const teacherInfo = await this.db.select().from(TeacherTable).where(eq(TeacherTable.user_id, userInfo.id)).then(res => res[0])
     const studentInfo = await this.db.select().from(StudentTable).where(eq(StudentTable.user_id, userInfo.id)).then(res => res[0])
 
-    const specificUser: UserDetailDTO = {
+    const specificUser: UserDetailAuthDTO = {
       ...userInfo,
-      role: UserRole[userInfo.role as keyof typeof UserRole],
       studentInfo,
       teacherInfo
     }
@@ -52,13 +56,15 @@ export class UserServiceClass implements UserService {
   }
 
   async getSpecificFromStudentUUID(uuid: string): Promise<UserDetailDTO> {
-    const userInfo = await this.db.select().from(UserTable).where(eq(UserTable.student_id, uuid)).then(res => res[0])
+    const userInfo = await this.db.select().from(UserTable).where(eq(UserTable.student_id, uuid)).then(res => {
+      const { password, ...userWithoutPassword } = res[0];
+      return userWithoutPassword;
+    });
     const teacherInfo = await this.db.select().from(TeacherTable).where(eq(TeacherTable.user_id, userInfo.id)).then(res => res[0])
     const studentInfo = await this.db.select().from(StudentTable).where(eq(StudentTable.user_id, userInfo.id)).then(res => res[0])
 
     const specificUser: UserDetailDTO = {
       ...userInfo,
-      role: UserRole[userInfo.role as keyof typeof UserRole],
       studentInfo,
       teacherInfo
     }
@@ -67,13 +73,14 @@ export class UserServiceClass implements UserService {
   }
 
   async getSpecificFromTeacherUUID(uuid: string): Promise<UserDetailDTO> {
-    const userInfo = await this.db.select().from(UserTable).where(eq(UserTable.teacher_id, uuid)).then(res => res[0])
-    const teacherInfo = await this.db.select().from(TeacherTable).where(eq(TeacherTable.user_id, userInfo.id)).then(res => res[0])
+    const userInfo = await this.db.select().from(UserTable).where(eq(UserTable.teacher_id, uuid)).then(res => {
+      const { password, ...userWithoutPassword } = res[0];
+      return userWithoutPassword;
+    }); const teacherInfo = await this.db.select().from(TeacherTable).where(eq(TeacherTable.user_id, userInfo.id)).then(res => res[0])
     const studentInfo = await this.db.select().from(StudentTable).where(eq(StudentTable.user_id, userInfo.id)).then(res => res[0])
 
     const specificUser: UserDetailDTO = {
       ...userInfo,
-      role: UserRole[userInfo.role as keyof typeof UserRole],
       studentInfo,
       teacherInfo
     }
@@ -81,6 +88,28 @@ export class UserServiceClass implements UserService {
     return specificUser
   }
 
+  async getAllFromGroupUUID(uuid: string): Promise<StudentDetailDTO[]> {
+    const studentsInfo = await this.db.select().from(StudentTable).where(eq(StudentTable.group_id, uuid))
+    const users: StudentDetailDTO[] = []
+
+    for (let index = 0; index < studentsInfo.length; index++) {
+      const userInfo = await this.db.select().from(UserTable).where(eq(UserTable.student_id, studentsInfo[index].id)).then(res => {
+        const { password, ...userWithoutPassword } = res[0];
+        return userWithoutPassword;
+      });
+
+      const studentDetail: StudentDetailDTO = {
+        studentId: studentsInfo[index].id,
+        name: userInfo.name,
+        email: userInfo.email,
+        group_id: studentsInfo[index].group_id
+      }
+
+      users.push(studentDetail)
+    }
+
+    return users
+  }
   async deleteSpecificFromUUID(uuid: string): Promise<UserDetailDTO> {
     const specificUser = await this.getSpecificFromUUID(uuid)
 

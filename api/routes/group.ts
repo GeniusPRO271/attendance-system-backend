@@ -54,8 +54,8 @@ function startGroupRoute(service: GroupService, db: PostgresJsDatabase<Record<st
 
     if (!group) {
       return c.json({
-        message: "Failed to get subject due to invalid group number.",
-        data: null
+        message: "Failed to get group due to invalid group number.",
+        data: groupId
       }, { status: 400 });
     }
 

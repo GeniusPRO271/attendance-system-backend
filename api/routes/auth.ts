@@ -44,17 +44,18 @@ function startAuthRoute(auth: AuthService, service: UserService, db: PostgresJsD
     try {
 
       const { email, password } = c.req.valid("json")
-      const { password: storedPassword, id } = await service.getSpecificFromEmail(email)
+      const { password: storedPassword, ...userInfo } = await service.getSpecificFromEmail(email)
 
       const isPasswordValid = await bcrypt.compare(password, storedPassword);
       if (!storedPassword || !isPasswordValid) {
         return c.json({ message: 'Invalid credentials' }, 401);
       }
 
-      const tokenData = await auth.generateTokens(id);
+      const tokenData = await auth.generateTokens(userInfo.id);
 
       return c.json({
         message: 'Login successful',
+        userDetails: userInfo,
         accessToken: tokenData.token,
         refreshToken: tokenData.refreshToken,
         expiresIn: tokenData.expiresIn,

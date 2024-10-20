@@ -5,7 +5,7 @@ import { zValidator } from "@hono/zod-validator";
 import { createSubjectSchema } from "../zod/create_schema";
 import { insertSubjectSchema, insertSubjectToGroupSchema, subjectsToGroupsTable, SubjectTable } from "../db/schema/tables";
 import { SubjectBuilder } from "../builders";
-import { validateUUID } from "../zod/select_schema";
+import { validateUUID, validGroupParams } from "../zod/select_schema";
 import { updateSubjectSchema } from "../zod/update_schema";
 import { db } from "../db";
 
@@ -49,6 +49,26 @@ function startSubjectRoute(service: SubjectService, db: PostgresJsDatabase<Recor
     return c.json({
       "message": "subjects requested",
       "data": subjects_data
+    })
+  })
+
+  // Get a specific subject
+  api.get("/group/:uuid", zValidator("param", validateUUID), async (c) => {
+    const groupId = c.req.valid("param").uuid
+    const subject = await service.getAllFromGroupUUID(groupId)
+    return c.json({
+      message: "specific subject data requested",
+      data: subject
+    })
+  })
+
+  // Get a specific subject
+  api.get("/groups", zValidator("query", validGroupParams), async (c) => {
+    const query = c.req.valid("query")
+    const subjects = await service.getAllFromQuery(query.teacher_id, query.group_id)
+    return c.json({
+      message: "specific subject data requested",
+      data: subjects
     })
   })
 

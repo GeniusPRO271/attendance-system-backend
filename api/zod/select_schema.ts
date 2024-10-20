@@ -12,6 +12,17 @@ export const validateUUID = z.object({
 
 export type validateUUIDType = z.infer<typeof validateUUID>;
 
+export const validGroupParams = z.object({
+  group_id: z
+    .string()
+    .uuid().optional(),
+  teacher_id: z
+    .string()
+    .uuid().optional(),
+});
+
+export type validGroupParamsType = z.infer<typeof validGroupParams>;
+
 export const validPagination = z.object({
   limit: z
     .string()

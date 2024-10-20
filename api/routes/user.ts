@@ -8,6 +8,8 @@ import { UserBuilder } from "../builders"
 import { validateEmail, validateUUID } from "../zod/select_schema"
 import { updateStudentSchema, updateUserSchema } from "../zod/update_schema"
 import { db } from "../db"
+import { SECRET_KEY } from "../config"
+import jwt from 'jsonwebtoken';
 
 function startUserRoute(service: UserService, db: PostgresJsDatabase<Record<string, never>>) {
 
@@ -75,6 +77,39 @@ function startUserRoute(service: UserService, db: PostgresJsDatabase<Record<stri
       data: user
     })
   })
+
+  api.get("/profile/info", async (c) => {
+    try {
+
+      console.log("getting profile")
+      const authHeader = c.req.header("Authorization")
+      if (!authHeader) {
+        return c.json({ message: "Authorization header missing" }, 401);
+      }
+
+      const token = authHeader.split(" ")[1];
+      if (!token) {
+        return c.json({ message: "Token missing" }, 401);
+      }
+
+      const decodedToken = jwt.verify(token, SECRET_KEY) as { uuid: string };
+
+      const user = await service.getSpecificFromUUID(decodedToken.uuid);
+
+      console.log("user after fucnton: ", user)
+      if (!user) {
+        return c.json({ message: "User not found" }, 404);
+      }
+
+      return c.json({
+        message: "User profile retrieved successfully",
+        data: user,
+      });
+
+    } catch {
+      return c.json({ message: "Unauthorized or invalid token" }, 401);
+    }
+  });
 
   // Delete a specific user
   api.delete("/:uuid", zValidator("param", validateUUID), async (c) => {

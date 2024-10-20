@@ -14,7 +14,15 @@ export interface SubjectDetailsDTO {
 export interface SubjectDTO {
   id: string;
   name: string;
+  description: string;
   updatedAt: Date | null;
   createdAt: Date | null;
-  description: string;
+}
+
+export interface SubjectQueryDTO {
+  subjects: (SubjectDTO | undefined)[],
+  possibleFilters: {
+    teacher_ids?: string[],
+    group_ids?: string[]
+  }
 }
