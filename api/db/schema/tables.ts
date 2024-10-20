@@ -60,6 +60,22 @@ export const SubjectTable = pgTable('subject', {
 });
 
 // Many to Many relation table between Subejct and Group
+export const subjectsToTeacherTable = pgTable(
+  'subjects_to_teacher',
+  {
+    subject_id: uuid('subject_id')
+      .notNull()
+      .references(() => SubjectTable.id),
+    teacher_id: uuid('teacher_id')
+      .notNull()
+      .references(() => TeacherTable.id),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.teacher_id, t.subject_id] }),
+  }),
+);
+
+// Many to Many relation table between Subejct and Group
 export const subjectsToGroupsTable = pgTable(
   'subjects_to_groups',
   {
@@ -107,11 +123,12 @@ export const studentRelatons = relations(StudentTable, ({ one }) => ({
   }),
 }));
 
-export const teacherRelatons = relations(TeacherTable, ({ one }) => ({
+export const teacherRelatons = relations(TeacherTable, ({ one, many }) => ({
   user: one(UserTable, {
     fields: [TeacherTable.user_id],
     references: [UserTable.id],
   }),
+  subjectToTeacher: many(subjectsToTeacherTable),
 }));
 
 export const userRelation = relations(UserTable, ({ one }) => ({
@@ -128,6 +145,7 @@ export const userRelation = relations(UserTable, ({ one }) => ({
 export const subjectRelations = relations(SubjectTable, ({ many }) => ({
   classes: many(LessonTable),
   subjectsTogroups: many(subjectsToGroupsTable),
+  subjectToTeacher: many(subjectsToTeacherTable),
 }));
 
 export const lessonRelations = relations(LessonTable, ({ one, many }) => ({
@@ -168,6 +186,17 @@ export const directionRelationsOneFaculty = relations(DirectionTable, ({ one }) 
   faculty: one(FacultyTable, {
     fields: [DirectionTable.faculty],
     references: [FacultyTable.id],
+  }),
+}));
+
+export const subjectsToTeacherRelations = relations(subjectsToTeacherTable, ({ one }) => ({
+  teacher: one(TeacherTable, {
+    fields: [subjectsToTeacherTable.teacher_id],
+    references: [TeacherTable.id],
+  }),
+  subject: one(SubjectTable, {
+    fields: [subjectsToTeacherTable.subject_id],
+    references: [SubjectTable.id],
   }),
 }));
 
