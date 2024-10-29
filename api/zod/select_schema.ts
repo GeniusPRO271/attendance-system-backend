@@ -36,6 +36,8 @@ export const validPagination = z.object({
       message: "Offset must be a valid number",
     })
     .default("0"),  // Default value for offset
+  from: z.string().date().default("2023-01-01")
+
 });
 
 export type validPaginationType = z.infer<typeof validPagination>;

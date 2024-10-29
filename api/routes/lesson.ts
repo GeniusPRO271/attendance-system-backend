@@ -49,8 +49,7 @@ function startLessonRoute(service: LessonService, db: PostgresJsDatabase<Record<
   api.get("/teacher/:uuid", zValidator("param", validateUUID), zValidator("query", validPagination), async (c) => {
     const teacherId = c.req.valid("param").uuid
     const pagination = c.req.valid("query")
-
-    const teacherLessons = await service.getFromTeacherUUID(teacherId, pagination.limit, pagination.offset)
+    const teacherLessons = await service.getFromTeacherUUID(teacherId, pagination.limit, pagination.offset, new Date(pagination.from))
     return c.json({
       message: "Specific lesson data requested",
       data: teacherLessons

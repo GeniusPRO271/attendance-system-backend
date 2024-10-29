@@ -1,13 +1,13 @@
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import { isNextWeek, isThisWeek, isToday } from "../utils"
-import { GroupTable, LessonTable, SubjectTable } from "../db/schema/tables"
-import { eq } from 'drizzle-orm';
+import { GroupTable, lessonRelations, LessonTable, SubjectTable } from "../db/schema/tables"
+import { and, count, eq, gt } from 'drizzle-orm';
 import type { updateLessonSchemaType } from "../zod/update_schema";
 import type { LessonDetailDTO, LessonDTO, LessonDTOPagination } from "../dto/lesson";
 
 export interface LessonService {
   getSpecificFromUUID(uuid: string): Promise<LessonDetailDTO>
-  getFromTeacherUUID(uuid: string, limit: string, offset: string): Promise<LessonDTOPagination>
+  getFromTeacherUUID(uuid: string, limit: string, offset: string, from: Date): Promise<LessonDTOPagination>
   deleteSpecificFromUUID(uuid: string): Promise<LessonDetailDTO>
   updateSpecificFromUUID(uuid: string, values: updateLessonSchemaType): Promise<LessonDetailDTO>
 }
@@ -53,16 +53,16 @@ export class LessonServiceClass implements LessonService {
     return specificLesson
   }
 
-  async getFromTeacherUUID(uuid: string, limit: string = "10", offset: string = "0"): Promise<LessonDTOPagination> {
+  async getFromTeacherUUID(uuid: string, limit: string = "10", offset: string = "0", from: Date = new Date("2023-01-01")): Promise<LessonDTOPagination> {
 
     const selectLessons = await this.db.select()
-      .from(LessonTable).where(eq(LessonTable.teacher_id, uuid))
+      .from(LessonTable)
+      .where(and(eq(LessonTable.teacher_id, uuid), gt(LessonTable.start_time, from)))
       .limit(Number(limit)).offset(Number(offset))
       .orderBy(LessonTable.start_time)
 
 
     let specificLessons: LessonDetailDTO[] = []
-
     for (let index = 0; index < selectLessons.length; index++) {
 
       const lessonSubject = await this.db.select().from(SubjectTable).where(eq(SubjectTable.id, selectLessons[index].subject_id)).then(res => res[0])
