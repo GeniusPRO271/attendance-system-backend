@@ -77,11 +77,19 @@ export class LessonServiceClass implements LessonService {
       specificLessons.push(lesson)
     }
 
+
+    const rowCount = await this.db.select({ count: count() })
+      .from(LessonTable)
+      .where(and(eq(LessonTable.teacher_id, uuid), gt(LessonTable.start_time, from)))
+      .then(res => res[0])
+
+    console.log("rowCount: ", rowCount)
+
     return {
       data: specificLessons,
       offset: Number(offset),
       limit: Number(limit),
-      rowCount: specificLessons.length
+      rowCount: rowCount?.count ?? 0
     }
   }
 

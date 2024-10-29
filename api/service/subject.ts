@@ -1,5 +1,5 @@
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
-import { GroupTable, LessonTable, subjectsToGroupsTable, subjectsToTeacherTable, SubjectTable } from "../db/schema/tables"
+import { GroupTable, LessonTable, subjectsToGroupsTable, subjectsToTeacherTable, SubjectTable, TeacherTable, UserTable } from "../db/schema/tables"
 import { and, eq, inArray } from 'drizzle-orm';
 import type { updateSubjectSchemaType } from "../zod/update_schema";
 import { isNextWeek, isThisWeek, isToday } from "../utils";
@@ -25,6 +25,13 @@ export class SubjectServiceClass implements SubjectService {
     const subjectLessons = await this.db.select().from(LessonTable).where(eq(LessonTable.subject_id, uuid))
     const groupIds = await this.db.select().from(subjectsToGroupsTable).where(eq(subjectsToGroupsTable.subject_id, selectSubject.id)).then(res => res.map(row => row.group_id)); // Get group IDs from the many-to-many table
     const groups = await this.db.select().from(GroupTable).where(inArray(GroupTable.id, groupIds));
+    const teachersIds = await this.db.select().from(subjectsToTeacherTable).where(eq(subjectsToTeacherTable.subject_id, selectSubject.id)).then(res => res.map(row => row.teacher_id)); // Get group IDs from the many-to-many table
+    const teachers = await this.db.select({
+      id: UserTable.id,
+      name: UserTable.name,
+      email: UserTable.email,
+      teacher_id: UserTable.teacher_id,
+    }).from(UserTable).where(inArray(UserTable.teacher_id, teachersIds));
 
     const lessonsWithStatus = subjectLessons.map(lesson => ({
       ...lesson,
@@ -34,7 +41,8 @@ export class SubjectServiceClass implements SubjectService {
     let specificSubject: SubjectDetailsDTO = {
       ...selectSubject,
       lessons: lessonsWithStatus,
-      groups: groups
+      groups: groups,
+      teachers: teachers
     };
 
     return specificSubject
