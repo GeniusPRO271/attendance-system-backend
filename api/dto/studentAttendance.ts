@@ -1,12 +1,14 @@
+import type { StudentDetailDTO } from "./user";
+
 export enum AttendanceStatus {
   Present = "present",
   Absent = "absent",
-  Late = "late"
+  Late = "late",
+  Pending = "pending"
 }
 
 export interface StudentAttendanceDTO {
   id: string,
-  lesson_id: string,
-  student_id: string,
-  status: AttendanceStatus
+  student: StudentDetailDTO,
+  status: string
 }

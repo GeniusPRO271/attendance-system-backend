@@ -1,11 +1,15 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
-import { AuthRoute, DirectionRoute, FacultyRoute, GroupRoute, LessonRoute, StudentAttendanceRoute, SubjectRoute } from "./routes";
+import { AttendanceProcessRoute, AuthRoute, DirectionRoute, FacultyRoute, GroupRoute, LessonRoute, StudentAttendanceRoute, SubjectRoute } from "./routes";
 import { UserRoute } from "./routes/user";
 import { jwt } from "hono/jwt";
 import type { Variables } from "hono/types";
 import { SECRET_KEY } from "./config";
+import { db } from "./db";
+import { AttendanceProcessTable } from "./db/schema/tables";
+import { eq, and, lte } from 'drizzle-orm';
+import cron from 'node-cron';
 
 const api = new Hono<{ Variables: Variables }>()
 
@@ -21,27 +25,50 @@ api.use('api/protected/*', (c, next) => {
   return jwtMiddleware(c, next)
 })
 
-const protectedRoutes = api.basePath("/api/protected")
+api.basePath("/api/protected")
   .route('/group', GroupRoute)
   .route('/direction', DirectionRoute)
   .route('/faculty', FacultyRoute)
   .route('/lesson', LessonRoute)
   .route('/subject', SubjectRoute)
   .route('/user', UserRoute)
-  .route('/attendance', StudentAttendanceRoute)
+  .route('/attendance-process', AttendanceProcessRoute)
+  .route('/student-attendance', StudentAttendanceRoute)
   .get('/hello', (c) => {
     return c.text(
       "Api protected routes up and running! ",
     )
   })
 
-const unprotectedRoutes = api.basePath("/api")
+api.basePath("/api")
   .route('/auth', AuthRoute)
   .get('/hello', (c) => {
     return c.text(
       "Api unprotected routes up and running! ",
     )
   })
+
+cron.schedule('* * * * *', async () => {
+  console.log('Running cron job to check for expired processes');
+
+  const now = new Date();
+
+  const processesToUpdate = await db.select()
+    .from(AttendanceProcessTable)
+    .where(and(eq(AttendanceProcessTable.status, 'IN_PROCESS'), lte(AttendanceProcessTable.end_time, now.toString())))
+    .execute();
+
+  if (processesToUpdate.length > 0) {
+    console.log(`Updating ${processesToUpdate.length} processes to Finished`);
+    for (const process of processesToUpdate) {
+
+      await db.update(AttendanceProcessTable)
+        .set({ status: 'CLOSED' })
+        .where(eq(AttendanceProcessTable.id, process.id))
+        .execute();
+    }
+  }
+});
 
 export default api
 

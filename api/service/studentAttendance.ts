@@ -2,12 +2,12 @@ import { eq } from 'drizzle-orm';
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import { AttendanceStatus, type StudentAttendanceDTO } from "../dto/studentAttendance"
 import type { updateStudentAttendanceType } from "../zod/update_schema"
-import { StudentAttendanceTable } from "../db/schema/tables"
+import { StudentAttendanceTable, UserTable } from "../db/schema/tables"
 
 export interface StudentAttendanceService {
   getSpecificFromUUID(uuid: string): Promise<StudentAttendanceDTO>
   getAllFromStudentUUID(uuid: string): Promise<StudentAttendanceDTO[]>
-  getAllFromLessonUUID(uuid: string): Promise<StudentAttendanceDTO[]>
+  getAllFromAttendanceProcessUUID(uuid: string): Promise<StudentAttendanceDTO[]>
   deleteSpecificFromUUID(uuid: string): Promise<StudentAttendanceDTO>
   updateSpecificFromUUID(uuid: string, values: updateStudentAttendanceType): Promise<StudentAttendanceDTO>
 }
@@ -21,21 +21,51 @@ export class StudentAttendanceServiceClass implements StudentAttendanceService {
 
   async getSpecificFromUUID(uuid: string): Promise<StudentAttendanceDTO> {
     const attendance = await this.db.select().from(StudentAttendanceTable).where(eq(StudentAttendanceTable.id, uuid)).then(res => res[0])
+    const student = await this.db.select().from(UserTable).where(eq(UserTable.student_id, attendance.student_id)).then(res => res[0])
+
 
     return {
       ...attendance,
-      status: AttendanceStatus[attendance.status as keyof typeof AttendanceStatus]
+      student: {
+        studentId: student.student_id ?? "",
+        name: student.name,
+        email: student.email,
+      }
     }
   }
 
+  async getAllFromAttendanceProcessUUID(uuid: string): Promise<StudentAttendanceDTO[]> {
+    const attendances = await this.db.select().from(StudentAttendanceTable).where(eq(StudentAttendanceTable.attendace_process_id, uuid))
+    let attendancesDetailed: StudentAttendanceDTO[] = []
+
+    for (let index = 0; index < attendances.length; index++) {
+      const student = await this.db.select().from(UserTable).where(eq(UserTable.student_id, attendances[index].student_id)).then(res => res[0])
+      const values: StudentAttendanceDTO = {
+        ...attendances[index],
+        student: {
+          studentId: student.student_id ?? "",
+          name: student.name,
+          email: student.email,
+        }
+      }
+      attendancesDetailed.push(values)
+    }
+
+    return attendancesDetailed
+  }
   async getAllFromStudentUUID(uuid: string): Promise<StudentAttendanceDTO[]> {
     const attendances = await this.db.select().from(StudentAttendanceTable).where(eq(StudentAttendanceTable.student_id, uuid))
     let attendancesDetailed: StudentAttendanceDTO[] = []
 
     for (let index = 0; index < attendances.length; index++) {
+      const student = await this.db.select().from(UserTable).where(eq(UserTable.student_id, attendances[index].student_id)).then(res => res[0])
       const values: StudentAttendanceDTO = {
         ...attendances[index],
-        status: AttendanceStatus[attendances[0].status as keyof typeof AttendanceStatus]
+        student: {
+          studentId: student.student_id ?? "",
+          name: student.name,
+          email: student.email,
+        }
       }
       attendancesDetailed.push(values)
     }
@@ -43,20 +73,6 @@ export class StudentAttendanceServiceClass implements StudentAttendanceService {
     return attendancesDetailed
   }
 
-  async getAllFromLessonUUID(uuid: string): Promise<StudentAttendanceDTO[]> {
-    const attendances = await this.db.select().from(StudentAttendanceTable).where(eq(StudentAttendanceTable.lesson_id, uuid))
-    let attendancesDetailed: StudentAttendanceDTO[] = []
-
-    for (let index = 0; index < attendances.length; index++) {
-      const values: StudentAttendanceDTO = {
-        ...attendances[index],
-        status: AttendanceStatus[attendances[0].status as keyof typeof AttendanceStatus]
-      }
-      attendancesDetailed.push(values)
-    }
-
-    return attendancesDetailed
-  }
 
   async deleteSpecificFromUUID(uuid: string): Promise<StudentAttendanceDTO> {
     const specificAttendance = await this.getSpecificFromUUID(uuid)

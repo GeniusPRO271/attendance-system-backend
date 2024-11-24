@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { UserRole } from "../dto/user";
 import { AttendanceStatus } from "../dto/studentAttendance";
+import { AttendanceProcessStatus } from "../dto/attendanceProcess";
 
 export const updateGroup = z.object({
   group_name: z.string().optional(),
@@ -77,3 +78,8 @@ export const updateStudentAttendanceSchema = z.object({
 
 export type updateStudentAttendanceType = z.infer<typeof updateStudentAttendanceSchema>;
 
+export const updateAttendanceProcessSchema = z.object({
+  status: z.nativeEnum(AttendanceProcessStatus).optional(),
+});
+
+export type updateAttendanceProcessType = z.infer<typeof updateAttendanceProcessSchema>;

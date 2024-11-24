@@ -80,11 +80,16 @@ export const createStudentSchema = z.object({
 export type createStudentSchemaType = z.infer<typeof createStudentSchema>;
 
 export const createStudentAttendanceSchema = z.object({
-  lesson_id: z.string().uuid(),
   student_id: z.string().uuid(),
-  status: z.nativeEnum(AttendanceStatus)
+  attendace_process_id: z.string().uuid()
 });
 
 export type createStudentAttendanceType = z.infer<typeof createStudentAttendanceSchema>;
 
+
+export const createAttendanceProcessSchema = z.object({
+  lesson_id: z.string().uuid(),
+});
+
+export type createAttendanceProcessType = z.infer<typeof createAttendanceProcessSchema>;
 

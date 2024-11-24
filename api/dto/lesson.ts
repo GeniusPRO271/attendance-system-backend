@@ -1,8 +1,11 @@
+import type { AttendanceProcessDTO } from "./attendanceProcess";
 import type { GroupDTO } from "./group";
 import type { SubjectDTO } from "./subject";
+import type { TeacherDetailDTO } from "./user";
 
 export interface LessonDTO {
   teacher_id: string;
+  attendance_process_id: string;
   subject_id: string;
   start_time: Date
   end_time: Date;
@@ -13,6 +16,9 @@ export interface LessonDTO {
 export interface LessonDetailDTO {
   id: string;
   teacher_id: string;
+  attendance_process_id: string;
+  attendance_process: AttendanceProcessDTO
+  teacher: TeacherDetailDTO
   subject: SubjectDTO;
   group: GroupDTO
   status: string

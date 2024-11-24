@@ -38,9 +38,9 @@ function startStudentAttendanceRoute(service: StudentAttendanceService, db: Post
   })
 
   // Get all lesson attendances
-  api.get("/lesson/:uuid", zValidator("param", validateUUID), async (c) => {
+  api.get("/attendance-process/:uuid", zValidator("param", validateUUID), async (c) => {
     const lessonId = c.req.valid("param").uuid
-    const attendances = await service.getAllFromLessonUUID(lessonId)
+    const attendances = await service.getAllFromAttendanceProcessUUID(lessonId)
     return c.json({
       message: "All lesson attendances requested",
       data: attendances

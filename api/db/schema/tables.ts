@@ -3,10 +3,19 @@ import { pgTable, text, integer, uuid, timestamp, primaryKey, varchar, date } fr
 import { createInsertSchema } from "drizzle-zod";
 
 
+// Attendance Process Model
+export const AttendanceProcessTable = pgTable('attendance_process', {
+  id: uuid('id').primaryKey(),
+  lesson_id: uuid('lesson_id').notNull(),
+  status: varchar('status', { length: 50 }).notNull(),
+  start_time: date('start_time'),
+  end_time: date('end_time')
+});
+
 // Student Attendance Model
 export const StudentAttendanceTable = pgTable('student_attendance', {
   id: uuid('id').primaryKey(),
-  lesson_id: uuid('lesson_id').notNull(),
+  attendace_process_id: uuid("attendace_process_id").notNull(),
   student_id: uuid('student_id').notNull(),
   status: varchar('status', { length: 50 }).notNull(),
 });
@@ -40,6 +49,7 @@ export const LessonTable = pgTable('lesson', {
   teacher_id: uuid("teacher_id").notNull(),
   subject_id: uuid("subject_id").notNull(),
   group_id: uuid("group_id").notNull(),
+  attendance_process_id: uuid("attendace_process_id").notNull(),
   start_time: timestamp("start_time").notNull(),
   end_time: timestamp("end_time").notNull(),
   updatedAt: timestamp('updated_at', { mode: 'date', precision: 3 })
@@ -148,7 +158,7 @@ export const subjectRelations = relations(SubjectTable, ({ many }) => ({
   subjectToTeacher: many(subjectsToTeacherTable),
 }));
 
-export const lessonRelations = relations(LessonTable, ({ one, many }) => ({
+export const lessonRelations = relations(LessonTable, ({ one }) => ({
   subject: one(SubjectTable, {
     fields: [LessonTable.subject_id],
     references: [SubjectTable.id],
@@ -157,7 +167,10 @@ export const lessonRelations = relations(LessonTable, ({ one, many }) => ({
     fields: [LessonTable.group_id],
     references: [GroupTable.id],
   }),
-  studentAttendances: many(StudentAttendanceTable)
+  attendance_process: one(AttendanceProcessTable, {
+    fields: [LessonTable.attendance_process_id],
+    references: [AttendanceProcessTable.id],
+  }),
 }));
 
 
@@ -211,10 +224,18 @@ export const subjectsToGroupsRelations = relations(subjectsToGroupsTable, ({ one
   }),
 }));
 
-export const studentAttendanceRelations = relations(StudentAttendanceTable, ({ one }) => ({
+export const attendanceProcessRelations = relations(AttendanceProcessTable, ({ many, one }) => ({
   lesson: one(LessonTable, {
-    fields: [StudentAttendanceTable.lesson_id],
+    fields: [AttendanceProcessTable.lesson_id],
     references: [LessonTable.id],
+  }),
+  studentAttendance: many(StudentAttendanceTable)
+}));
+
+export const studentAttendanceRelations = relations(StudentAttendanceTable, ({ one }) => ({
+  attendance_process: one(AttendanceProcessTable, {
+    fields: [StudentAttendanceTable.attendace_process_id],
+    references: [AttendanceProcessTable.id],
   }),
 
   student: one(StudentTable, {
@@ -222,6 +243,7 @@ export const studentAttendanceRelations = relations(StudentAttendanceTable, ({ o
     references: [StudentTable.id],
   }),
 }));
+
 
 export const insertGroupSchema = createInsertSchema(GroupTable);
 export const insertSubjectToGroupSchema = createInsertSchema(subjectsToGroupsTable);
@@ -231,5 +253,6 @@ export const insertSubjectSchema = createInsertSchema(SubjectTable);
 export const insertLessonSchema = createInsertSchema(LessonTable);
 export const insertUserSchema = createInsertSchema(UserTable);
 export const insertStudentSchema = createInsertSchema(StudentTable);
+export const insertAttendanceProcess = createInsertSchema(AttendanceProcessTable);
 export const insertTeacherSchema = createInsertSchema(TeacherTable);
 export const insertStudentAttendanceSchema = createInsertSchema(StudentAttendanceTable);

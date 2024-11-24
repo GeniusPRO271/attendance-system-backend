@@ -15,8 +15,8 @@ function startLessonRoute(service: LessonService, db: PostgresJsDatabase<Record<
   // Create a new lesson
   api.post('/', zValidator("json", createLessonSchema), async (c) => {
     const body = c.req.valid("json")
-
-    const new_lesson = insertLessonSchema.parse(new LessonBuilder(body))
+    const lesson = await LessonBuilder.create(body, db)
+    const new_lesson = insertLessonSchema.parse(lesson)
 
     await db.insert(LessonTable).values(new_lesson)
 

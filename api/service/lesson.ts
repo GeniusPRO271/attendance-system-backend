@@ -1,6 +1,6 @@
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import { isNextWeek, isThisWeek, isToday } from "../utils"
-import { GroupTable, lessonRelations, LessonTable, SubjectTable } from "../db/schema/tables"
+import { AttendanceProcessTable, GroupTable, LessonTable, SubjectTable, UserTable } from "../db/schema/tables"
 import { and, count, eq, gt } from 'drizzle-orm';
 import type { updateLessonSchemaType } from "../zod/update_schema";
 import type { LessonDetailDTO, LessonDTO, LessonDTOPagination } from "../dto/lesson";
@@ -23,12 +23,22 @@ export class LessonServiceClass implements LessonService {
     const selectLesson = await this.db.select().from(LessonTable).where(eq(LessonTable.id, uuid)).then(res => res[0])
     const lessonSubject = await this.db.select().from(SubjectTable).where(eq(SubjectTable.id, selectLesson.subject_id)).then(res => res[0])
     const group = await this.db.select().from(GroupTable).where(eq(GroupTable.id, selectLesson.group_id)).then(res => res[0]);
+    const teacher = await this.db.select().from(UserTable).where(eq(UserTable.teacher_id, selectLesson.teacher_id)).then(res => res[0]);
+    const attendance_process = await this.db.select().from(AttendanceProcessTable).where(eq(AttendanceProcessTable.id, selectLesson.attendance_process_id)).then(res => res[0]);
 
     let specificLesson: LessonDetailDTO = {
       ...selectLesson,
       status: this.getLessonStatus(selectLesson),
       subject: lessonSubject,
+      attendance_process,
+      teacher: {
+        id: teacher.id,
+        name: teacher.name,
+        email: teacher.email,
+        teacher_id: teacher.teacher_id
+      },
       group: group
+
 
     }
     return specificLesson
@@ -55,6 +65,7 @@ export class LessonServiceClass implements LessonService {
 
   async getFromTeacherUUID(uuid: string, limit: string = "10", offset: string = "0", from: Date = new Date("2023-01-01")): Promise<LessonDTOPagination> {
 
+    console.log("calling getFromTeacherUUID...")
     const selectLessons = await this.db.select()
       .from(LessonTable)
       .where(and(eq(LessonTable.teacher_id, uuid), gt(LessonTable.start_time, from)))
@@ -65,25 +76,42 @@ export class LessonServiceClass implements LessonService {
     let specificLessons: LessonDetailDTO[] = []
     for (let index = 0; index < selectLessons.length; index++) {
 
+      console.log("selectLessons attendance_process_id: ", selectLessons[index].attendance_process_id)
+
+      console.log("selectLessons start_time: ", selectLessons[index].start_time)
+      console.log("entered loop")
       const lessonSubject = await this.db.select().from(SubjectTable).where(eq(SubjectTable.id, selectLessons[index].subject_id)).then(res => res[0])
+      console.log("lessonSubject ")
       const group = await this.db.select().from(GroupTable).where(eq(GroupTable.id, selectLessons[index].group_id)).then(res => res[0]);
+      console.log("group")
+      const teacher = await this.db.select().from(UserTable).where(eq(UserTable.teacher_id, selectLessons[index].teacher_id)).then(res => res[0]);
+      console.log("teacher")
+      const attendance_process = await this.db.select().from(AttendanceProcessTable).where(eq(AttendanceProcessTable.lesson_id, selectLessons[index].id)).then(res => res[0]);
+      console.log("attendance_process: ", attendance_process)
+
+      console.log("selectLessons ", index, ':', selectLessons[index].id)
       let lesson: LessonDetailDTO = {
         ...selectLessons[index],
         status: this.getLessonStatus(selectLessons[index]),
+        attendance_process,
+        teacher: {
+          id: teacher.id,
+          name: teacher.name,
+          email: teacher.email,
+          teacher_id: teacher.teacher_id
+        },
         subject: lessonSubject,
         group: group
       }
 
+      console.log("lessons: ", lesson)
       specificLessons.push(lesson)
     }
-
 
     const rowCount = await this.db.select({ count: count() })
       .from(LessonTable)
       .where(and(eq(LessonTable.teacher_id, uuid), gt(LessonTable.start_time, from)))
       .then(res => res[0])
-
-    console.log("rowCount: ", rowCount)
 
     return {
       data: specificLessons,

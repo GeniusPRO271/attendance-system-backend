@@ -21,7 +21,6 @@ export interface StudentDetailDTO {
   studentId: string
   name: string
   email: string
-  group_id: string
 }
 export interface UserAuthDTO {
   token: string
@@ -45,6 +44,12 @@ export interface TeacherDTO {
   id: string
 }
 
+export interface TeacherDetailDTO {
+  id: string
+  name: string
+  email: string
+  teacher_id: string | null;
+}
 
 
 export enum UserRole {

@@ -1,18 +1,13 @@
 import type { GroupDTO } from "./group";
 import type { LessonDTO } from "./lesson";
-import type { UserDTO } from "./user";
+import type { TeacherDetailDTO } from "./user";
 
 export interface SubjectDetailsDTO {
   id: string;
   name: string;
   description: string;
   groups: GroupDTO[] | undefined;
-  teachers: {
-    id: string
-    name: string
-    email: string
-    teacher_id: string | null;
-  }[]
+  teachers: TeacherDetailDTO[]
   lessons: LessonDTO[],
   updatedAt: Date | null;
   createdAt: Date | null;
