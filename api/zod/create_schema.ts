@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { UserRole } from "../dto/user";
-import { AttendanceStatus } from "../dto/studentAttendance";
 
 export const createGroupSchema = z.object({
   group_name: z.string(),

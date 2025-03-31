@@ -8,8 +8,8 @@ export const AttendanceProcessTable = pgTable('attendance_process', {
   id: uuid('id').primaryKey(),
   lesson_id: uuid('lesson_id').notNull(),
   status: varchar('status', { length: 50 }).notNull(),
-  start_time: date('start_time'),
-  end_time: date('end_time')
+  start_time: timestamp('start_time', { withTimezone: true, precision: 6 }), // Up to microseconds
+  end_time: timestamp('end_time', { withTimezone: true, precision: 6 })
 });
 
 // Student Attendance Model
@@ -120,6 +120,8 @@ export const StudentTable = pgTable("students", {
   id: uuid("id").primaryKey(),
   user_id: uuid("user_id").notNull(),
   group_id: text("group_id").notNull(),
+  device_uuid: uuid("device_uuid"),
+  device_lastChange: timestamp("device_lastChange", { withTimezone: true, mode: "date" })
 });
 
 export const studentRelatons = relations(StudentTable, ({ one }) => ({

@@ -25,9 +25,16 @@ export class AttendanceProcessServiceClass implements AttendanceProcessService {
   }
 
   async startSpecificFromUUID(uuid: string, attendanceProcessValue: string): Promise<AttendanceProcessDTO> {
-    await this.db.update(AttendanceProcessTable).set({ status: AttendanceProcessStatus.InProcess, end_time: attendanceProcessValue, start_time: Date.now().toString() }).where(eq(AttendanceProcessTable.id, uuid))
     const selectAttendanceProcess = await this.db.select().from(AttendanceProcessTable).where(eq(AttendanceProcessTable.id, uuid)).then(res => res[0])
-    return selectAttendanceProcess
+    console.log(selectAttendanceProcess.status)
+    if (selectAttendanceProcess.status == "IN_PROCESS") {
+      return selectAttendanceProcess
+    } else {
+      await this.db.update(AttendanceProcessTable).set({ status: AttendanceProcessStatus.InProcess, end_time: new Date(attendanceProcessValue), start_time: new Date() }).where(eq(AttendanceProcessTable.id, uuid))
+      const selectAttendanceProcess = await this.db.select().from(AttendanceProcessTable).where(eq(AttendanceProcessTable.id, uuid)).then(res => res[0])
+      console.log("attendance procces started with new values: ", selectAttendanceProcess)
+      return selectAttendanceProcess
+    }
   }
 
   async endSpecificFromUUID(uuid: string): Promise<AttendanceProcessDTO> {
@@ -37,6 +44,7 @@ export class AttendanceProcessServiceClass implements AttendanceProcessService {
     return selectAttendanceProcess
   }
   async updateSpecificFromUUID(uuid: string, values: updateAttendanceProcessType): Promise<AttendanceProcessDTO> {
+    console.log("updating attendance proccess with new values: ", values)
     await this.db.update(AttendanceProcessTable).set(values).where(eq(AttendanceProcessTable.id, uuid))
     const selectAttendanceProcess = await this.db.select().from(AttendanceProcessTable).where(eq(AttendanceProcessTable.id, uuid)).then(res => res[0])
     return selectAttendanceProcess

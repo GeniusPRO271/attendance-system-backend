@@ -11,4 +11,6 @@ export interface StudentAttendanceDTO {
   id: string,
   student: StudentDetailDTO,
   status: string
+  attendace_process_id: string;
+
 }

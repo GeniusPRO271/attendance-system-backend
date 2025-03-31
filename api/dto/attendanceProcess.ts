@@ -11,6 +11,6 @@ export interface AttendanceProcessDTO {
   id: string
   lesson_id: string
   status: string
-  start_time: string | null
-  end_time: string | null
+  start_time: Date | null
+  end_time: Date | null
 }

@@ -1,0 +1,1 @@
+ALTER TABLE "students" ADD COLUMN "device_lastChange" timestamp with time zone;

@@ -13,6 +13,7 @@ export interface UserService {
   deleteSpecificFromUUID(uuid: string): Promise<UserDetailDTO>
   updateSpecificFromUUID(uuid: string, values: updateUserSchemaType): Promise<UserDetailDTO>
   updateSpecificStudentFromUUID(uuid: string, values: updateStudentSchemaType): Promise<UserDetailDTO | undefined>
+  addDeviceUUIDToStudent(uuid: string, deviceUUID: string): Promise<boolean>
 }
 
 export class UserServiceClass implements UserService {
@@ -133,6 +134,31 @@ export class UserServiceClass implements UserService {
       const specificUser = await this.getSpecificFromUUID(studentInfo.user_id)
       return specificUser
     }
+  }
+
+  async addDeviceUUIDToStudent(uuid: string, deviceUUID: string): Promise<boolean> {
+    const studentInfo = await this.db.select().from(StudentTable).where(eq(StudentTable.user_id, uuid)).then(res => res[0]);
+
+    if (!studentInfo) {
+      throw new Error("Student not found");
+    }
+
+    const { device_lastChange } = studentInfo;
+
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const lastChangeDate = device_lastChange ? new Date(device_lastChange) : null;
+
+    if (!lastChangeDate || lastChangeDate < thirtyDaysAgo) {
+      await this.db.update(StudentTable)
+        .set({ device_uuid: deviceUUID })
+        .where(eq(StudentTable.user_id, uuid));
+
+      return true;
+    }
+
+    return false;
   }
 }
 

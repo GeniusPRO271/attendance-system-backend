@@ -48,27 +48,6 @@ api.basePath("/api")
     )
   })
 
-cron.schedule('* * * * *', async () => {
-  console.log('Running cron job to check for expired processes');
-
-  const now = new Date();
-
-  const processesToUpdate = await db.select()
-    .from(AttendanceProcessTable)
-    .where(and(eq(AttendanceProcessTable.status, 'IN_PROCESS'), lte(AttendanceProcessTable.end_time, now.toString())))
-    .execute();
-
-  if (processesToUpdate.length > 0) {
-    console.log(`Updating ${processesToUpdate.length} processes to Finished`);
-    for (const process of processesToUpdate) {
-
-      await db.update(AttendanceProcessTable)
-        .set({ status: 'CLOSED' })
-        .where(eq(AttendanceProcessTable.id, process.id))
-        .execute();
-    }
-  }
-});
 
 export default api
 

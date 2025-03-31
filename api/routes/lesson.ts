@@ -56,6 +56,24 @@ function startLessonRoute(service: LessonService, db: PostgresJsDatabase<Record<
     })
   })
 
+
+  api.get("/group/:uuid", zValidator("param", validateUUID), async (c) => {
+    const groupUUID = c.req.valid("param").uuid
+    const groupLessons = await service.getLessonsFromGroupUUID(groupUUID)
+    return c.json({
+      message: "Specific lesson data requested",
+      data: groupLessons
+    })
+  })
+
+  api.get("/group/next/:uuid", zValidator("param", validateUUID), async (c) => {
+    const groupUUID = c.req.valid("param").uuid
+    const groupLessons = await service.getNextLessonFromGroupUUID(groupUUID)
+    return c.json({
+      message: "Specific lesson data requested",
+      data: groupLessons
+    })
+  })
   // Delete a specific lesson
   api.delete("/:uuid", zValidator("param", validateUUID), async (c) => {
     const lessonId = c.req.valid("param").uuid

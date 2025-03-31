@@ -145,6 +145,27 @@ function startUserRoute(service: UserService, db: PostgresJsDatabase<Record<stri
     })
   })
 
+  api.post("/student/device/:uuid", zValidator("param", validateUUID), async (c) => {
+    const studentId = c.req.valid("param").uuid
+    const { deviceUUID } = await c.req.json()
+
+    if (!deviceUUID) {
+      return c.json({ message: "deviceUUID is required" }, 400);
+    }
+
+    const updated = await service.addDeviceUUIDToStudent(studentId, deviceUUID);
+
+    if (updated) {
+      return c.json({
+        message: "Device UUID has been updated",
+      });
+    } else {
+      return c.json({
+        message: "No update was necessary, device UUID already set or last change is not old enough",
+      });
+    }
+  });
+
   return api
 }
 

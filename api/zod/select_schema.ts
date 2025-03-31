@@ -43,7 +43,7 @@ export const validPagination = z.object({
 export type validPaginationType = z.infer<typeof validPagination>;
 
 export const validDate = z.object({
-  date: z.string().datetime(),
+  date: z.string(),
 });
 
 export type validDateType = z.infer<typeof validDate>;

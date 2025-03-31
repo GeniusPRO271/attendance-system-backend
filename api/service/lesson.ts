@@ -10,6 +10,8 @@ export interface LessonService {
   getFromTeacherUUID(uuid: string, limit: string, offset: string, from: Date): Promise<LessonDTOPagination>
   deleteSpecificFromUUID(uuid: string): Promise<LessonDetailDTO>
   updateSpecificFromUUID(uuid: string, values: updateLessonSchemaType): Promise<LessonDetailDTO>
+  getNextLessonFromGroupUUID(uuid: string): Promise<LessonDetailDTO | null>
+  getLessonsFromGroupUUID(uuid: string): Promise<LessonDetailDTO[]>
 }
 
 export class LessonServiceClass implements LessonService {
@@ -146,4 +148,65 @@ export class LessonServiceClass implements LessonService {
 
     return status
   }
+
+  async getNextLessonFromGroupUUID(uuid: string): Promise<LessonDetailDTO | null> {
+    const nextLesson = await this.db.select()
+      .from(LessonTable)
+      .where(and(eq(LessonTable.group_id, uuid), gt(LessonTable.start_time, new Date())))
+      .orderBy(LessonTable.start_time)
+      .limit(1)
+      .then(res => res[0] ?? null);
+
+    if (!nextLesson) return null;
+
+    const lessonSubject = await this.db.select().from(SubjectTable).where(eq(SubjectTable.id, nextLesson.subject_id)).then(res => res[0]);
+    const group = await this.db.select().from(GroupTable).where(eq(GroupTable.id, nextLesson.group_id)).then(res => res[0]);
+    const teacher = await this.db.select().from(UserTable).where(eq(UserTable.teacher_id, nextLesson.teacher_id)).then(res => res[0]);
+    const attendance_process = await this.db.select().from(AttendanceProcessTable).where(eq(AttendanceProcessTable.id, nextLesson.attendance_process_id)).then(res => res[0]);
+
+    return {
+      ...nextLesson,
+      status: this.getLessonStatus(nextLesson),
+      subject: lessonSubject,
+      attendance_process,
+      teacher: {
+        id: teacher.id,
+        name: teacher.name,
+        email: teacher.email,
+        teacher_id: teacher.teacher_id
+      },
+      group: group
+    };
+  }
+
+  async getLessonsFromGroupUUID(uuid: string): Promise<LessonDetailDTO[]> {
+    const lessons = await this.db.select()
+      .from(LessonTable)
+      .where(eq(LessonTable.group_id, uuid))
+      .orderBy(LessonTable.start_time);
+
+    let lessonDetails: LessonDetailDTO[] = [];
+    for (const lesson of lessons) {
+      const lessonSubject = await this.db.select().from(SubjectTable).where(eq(SubjectTable.id, lesson.subject_id)).then(res => res[0]);
+      const group = await this.db.select().from(GroupTable).where(eq(GroupTable.id, lesson.group_id)).then(res => res[0]);
+      const teacher = await this.db.select().from(UserTable).where(eq(UserTable.teacher_id, lesson.teacher_id)).then(res => res[0]);
+      const attendance_process = await this.db.select().from(AttendanceProcessTable).where(eq(AttendanceProcessTable.id, lesson.attendance_process_id)).then(res => res[0]);
+
+      lessonDetails.push({
+        ...lesson,
+        status: this.getLessonStatus(lesson),
+        subject: lessonSubject,
+        attendance_process,
+        teacher: {
+          id: teacher.id,
+          name: teacher.name,
+          email: teacher.email,
+          teacher_id: teacher.teacher_id
+        },
+        group: group
+      });
+    }
+    return lessonDetails;
+  }
+
 }
