@@ -39,7 +39,7 @@ A modern, full-stack education management system built with cutting-edge technol
 
 1. Clone the repository
 ```bash
-git clone [your-repo-url]
+git clone https://github.com/GeniusPRO271/attendance-system-backend
 ```
 
 2. Install dependencies
@@ -88,23 +88,11 @@ docker run -p 3000:3000 education-system
 - Type-safe database operations
 - Environment variable protection
 
-## 📚 API Documentation
-
-[Add your API documentation here]
-
-## 🤝 Contributing
-
-[Add contribution guidelines here]
-
-## 📄 License
-
-[Add your license information here]
-
 ## 👤 Author
 
-[Your Name]
-- GitHub: [Your GitHub Profile]
-- LinkedIn: [Your LinkedIn Profile]
+GeniusPRO
+- GitHub: [GitHub Profile](https://github.com/GeniusPRO271)
+- LinkedIn: [LinkedIn Profile](https://www.linkedin.com/in/benjamin-toro-25266b259/)
 
 ---
 Made with ❤️ using modern web technologies
