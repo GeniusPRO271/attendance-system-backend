@@ -10,75 +10,31 @@ import CachedQRCodeGenerator from "../builders/qrCodeCache"
 function startAttendanceProcessRoute(service: AttendanceProcessService, qrCodeGenerator: CachedQRCodeGenerator) {
   const api = new Hono()
 
-  // Get specific attendance process
   api.get("/:uuid", zValidator("param", validateUUID), async (c) => {
     const attendanceProcessId = c.req.valid("param").uuid
     const attendanceProcess = await service.getSpecificFromUUID(attendanceProcessId)
 
-    if (attendanceProcess.status === "PENDING") {
-      return c.json(
-        {
-          message: "The attendance process needs to be started first.",
-        },
-        400 // HTTP status code for a bad request
-      );
-    }
-
-    const locations = {
-      MAIN_ENTRANCE: "main-entrance",
-      SIDE_ENTRANCE: "side-entrance",
-      BACK_ENTRANCE: "back-entrance",
-      LOBBY: "lobby",
-      CAFETERIA: "cafeteria"
-    };
-
-    const location = locations.MAIN_ENTRANCE;
-    const qrCode = await qrCodeGenerator.getQRCode(attendanceProcessId, location);
     return c.json({
       message: "attendance process data requested",
-      data: {
-        id: attendanceProcessId,
-        attendanceProcess,
-        qrCode: qrCode,
-        location: location,
-        validUntil: attendanceProcess.end_time
-      }
+      data: attendanceProcess,
     })
   })
 
   // Start specific attendance process 
-  api.post("/:uuid/start", zValidator("param", validateUUID), zValidator("query", validDate), async (c) => {
+  api.post("/:uuid/start", zValidator("param", validateUUID), async (c) => {
     const attendanceProcessId = c.req.valid("param").uuid
-    const attendanceEndTime = c.req.valid("query").date
 
-    const attendanceProcess = await service.startSpecificFromUUID(attendanceProcessId, attendanceEndTime)
-
-    const locations = {
-      MAIN_ENTRANCE: "main-entrance",
-      SIDE_ENTRANCE: "side-entrance",
-      BACK_ENTRANCE: "back-entrance",
-      LOBBY: "lobby",
-      CAFETERIA: "cafeteria"
-    };
-
-    const location = locations.MAIN_ENTRANCE;
-    const qrCode = await qrCodeGenerator.getQRCode(attendanceProcessId, location);
+    const attendanceProcess = await service.startSpecificFromUUID(attendanceProcessId)
 
     return c.json({
       message: "attendance process start",
-      data: {
-        id: attendanceProcessId,
-        attendanceProcess,
-        qrCode: qrCode,
-        location: location,
-        validUntil: attendanceEndTime
-      }
+      data: attendanceProcess
     })
   })
 
 
   // End specific attendance process 
-  api.get("/:uuid/end", zValidator("param", validateUUID), async (c) => {
+  api.post("/:uuid/end", zValidator("param", validateUUID), async (c) => {
     const attendanceProcessId = c.req.valid("param").uuid
     const attendanceProcess = await service.endSpecificFromUUID(attendanceProcessId)
     return c.json({
@@ -89,6 +45,7 @@ function startAttendanceProcessRoute(service: AttendanceProcessService, qrCodeGe
 
   // Update specific attendance process
   api.put("/:uuid", zValidator("param", validateUUID), zValidator("json", updateAttendanceProcessSchema), async (c) => {
+    console.log("updating attendanceProcess")
     const attendanceProcessId = c.req.valid("param").uuid
     const update = c.req.valid("json")
     const attendanceProcess = await service.updateSpecificFromUUID(attendanceProcessId, update)

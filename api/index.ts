@@ -6,10 +6,6 @@ import { UserRoute } from "./routes/user";
 import { jwt } from "hono/jwt";
 import type { Variables } from "hono/types";
 import { SECRET_KEY } from "./config";
-import { db } from "./db";
-import { AttendanceProcessTable } from "./db/schema/tables";
-import { eq, and, lte } from 'drizzle-orm';
-import cron from 'node-cron';
 
 const api = new Hono<{ Variables: Variables }>()
 
@@ -18,12 +14,12 @@ api.use(cors())
 
 
 // Auth middleware
-api.use('api/protected/*', (c, next) => {
-  const jwtMiddleware = jwt({
-    secret: SECRET_KEY
-  })
-  return jwtMiddleware(c, next)
-})
+// api.use('api/protected/*', (c, next) => {
+//   const jwtMiddleware = jwt({
+//     secret: SECRET_KEY
+//   })
+//   return jwtMiddleware(c, next)
+// })
 
 api.basePath("/api/protected")
   .route('/group', GroupRoute)

@@ -34,7 +34,6 @@ export interface UserDTO {
   email: string
   role: string
 }
-
 export interface StudentDTO {
   id: string
   group_id: string
@@ -57,3 +56,13 @@ export enum UserRole {
   Admin = 'admin',
 }
 
+export interface TeacherGetAll {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  subject: {
+    id: string;
+    name: string;
+  }[] | null;
+}

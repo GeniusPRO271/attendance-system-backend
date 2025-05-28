@@ -18,6 +18,7 @@ export const StudentAttendanceTable = pgTable('student_attendance', {
   attendace_process_id: uuid("attendace_process_id").notNull(),
   student_id: uuid('student_id').notNull(),
   status: varchar('status', { length: 50 }).notNull(),
+  lastUpdate: timestamp('lastUpdate', { withTimezone: true, precision: 6 })
 });
 
 // Faculty Model
@@ -109,6 +110,8 @@ export const UserTable = pgTable("users", {
   student_id: uuid("student_id"),
   teacher_id: uuid("teacher_id"),
   role: text("role").notNull(),
+  device_uuid: uuid("device_uuid"),
+  device_lastChange: timestamp("device_lastChange", { withTimezone: true, mode: "date" })
 });
 
 export const TeacherTable = pgTable("teachers", {
@@ -120,8 +123,6 @@ export const StudentTable = pgTable("students", {
   id: uuid("id").primaryKey(),
   user_id: uuid("user_id").notNull(),
   group_id: text("group_id").notNull(),
-  device_uuid: uuid("device_uuid"),
-  device_lastChange: timestamp("device_lastChange", { withTimezone: true, mode: "date" })
 });
 
 export const studentRelatons = relations(StudentTable, ({ one }) => ({

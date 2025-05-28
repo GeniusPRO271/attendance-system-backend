@@ -1,0 +1,1 @@
+ALTER TABLE "student_attendance" ADD COLUMN "end_time" timestamp (6) with time zone;

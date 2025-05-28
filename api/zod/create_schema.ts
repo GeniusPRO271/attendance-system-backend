@@ -4,7 +4,7 @@ import { UserRole } from "../dto/user";
 export const createGroupSchema = z.object({
   group_name: z.string(),
   direction: z.string().uuid(),
-  subject_id: z.string().uuid().optional(),
+  subject_id: z.array(z.string().uuid()),
   year: z.number()
 });
 

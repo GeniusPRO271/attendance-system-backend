@@ -4,11 +4,13 @@ import { Hono } from "hono"
 import { insertStudentAttendanceSchema, StudentAttendanceTable } from "../db/schema/tables"
 import { StudentAttendanceBuilder } from "../builders/studentAttendance"
 import { createStudentAttendanceSchema } from "../zod/create_schema"
-import { validateUUID } from "../zod/select_schema"
+import { validateAttendanceUUID, validateUUID } from "../zod/select_schema"
 import { updateStudentAttendanceSchema } from "../zod/update_schema"
 import { AttendanceProcessServiceClass, StudentAttendanceServiceClass, type AttendanceProcessService, type StudentAttendanceService } from "../service"
 import { db } from "../db"
 import { AttendanceStatus } from "../dto/studentAttendance"
+import { z } from "zod"
+import { roomManager } from "../.."
 
 
 function startStudentAttendanceRoute(service: StudentAttendanceService, db: PostgresJsDatabase<Record<string, never>>, serviceAttendanceProcess: AttendanceProcessService) {
@@ -47,6 +49,14 @@ function startStudentAttendanceRoute(service: StudentAttendanceService, db: Post
   })
 
 
+  api.get("/allowed/device/:uuid", zValidator("param", validateAttendanceUUID), async (c) => {
+    const attendanceId = c.req.valid("param").attendance_process
+    const devices = await service.getAllAllowedDevices(attendanceId)
+    return c.json({
+      message: "All devices allowed requested",
+      data: devices
+    })
+  })
   // Delete a specific student attendance
   api.delete("/:uuid", zValidator("param", validateUUID), async (c) => {
     const attendanceId = c.req.valid("param").uuid
@@ -59,9 +69,10 @@ function startStudentAttendanceRoute(service: StudentAttendanceService, db: Post
 
   // Update an specific lesson
   api.put("/:uuid", zValidator("param", validateUUID), zValidator("json", updateStudentAttendanceSchema), async (c) => {
-    const attendanceId = c.req.valid("param").uuid
+    const attendance_process_id = c.req.valid("param").uuid
     const update = c.req.valid("json")
-    const updatedAttendance = await service.updateSpecificFromUUID(attendanceId, update)
+
+    const updatedAttendance = await service.updateSpecificFromUUID(attendance_process_id, update)
 
     return c.json({
       message: "Lesson has been updated",
@@ -70,40 +81,40 @@ function startStudentAttendanceRoute(service: StudentAttendanceService, db: Post
   })
 
   // New endpoint: Mark attendance as present
-  api.put("/mark/:uuid", zValidator("param", validateUUID), async (c) => {
-    const attendanceId = c.req.valid("param").uuid;
+  api.put("/mark/:uuid", zValidator("param", validateUUID), zValidator("json", z.object({
+    attendance_process_id: z.string().uuid(),
+  })), async (c) => {
+    const { attendance_process_id } = c.req.valid("json");
+    const uuid = c.req.valid("param").uuid;
 
-    // Retrieve the student attendance record
-    const attendance = await service.getSpecificFromUUID(attendanceId);
-    if (!attendance) {
-      return c.json({ error: "Attendance record not found" }, 404);
+    console.log("recived: ", uuid, attendance_process_id)
+    console.log("calling service")
+    const studentAttendance = await service.getSpecificFromStudentUUID(uuid, attendance_process_id)
+    console.log("response: ", studentAttendance)
+
+    if (!studentAttendance) {
+      console.log("Attendance record not found or not started")
+      return c.json({ error: "Attendance record not found or not started" }, 404);
     }
 
-    // Check if attendance is already marked as present
-    if (attendance.status === AttendanceStatus.Present) {
+    if (studentAttendance.status === AttendanceStatus.Present) {
+      console.log("Attendance is already marked as present")
       return c.json({ error: "Attendance is already marked as present" }, 400);
     }
 
-    // Assuming that the attendance record has an attendanceProcessId field,
-    // and the serviceAttendanceProcess can fetch the corresponding attendance process.
-    const attendanceProcess = await serviceAttendanceProcess.getSpecificFromUUID(attendance.attendace_process_id);
-    if (!attendanceProcess) {
-      return c.json({ error: "Attendance process not found" }, 404);
-    }
 
-    // Check if the current time is before endTime and the process is started.
-    const currentTime = new Date();
-    const processEndTime = attendanceProcess.end_time!;
-    if (currentTime > processEndTime || attendanceProcess.status !== "started") {
-      return c.json({ error: "Attendance marking not allowed. Either the process has ended or is not active." }, 400);
-    }
+    const updatedAttendance = await service.markStudentAttendanceFromUUID(attendance_process_id, uuid, {
+      status: AttendanceStatus.Present,
+      lastUpdate: new Date()
+    });
 
-    // Update the student attendance status to "present"
-    const updatedAttendance = await service.updateSpecificFromUUID(attendanceId, { status: AttendanceStatus.Present });
+    const studentList = await service.getAllFromAttendanceProcessUUID(attendance_process_id)
 
+    console.log("SENDING MESSAGE WEBSCOKET")
+    roomManager.broadcastStudentListUpdate(attendance_process_id, studentList)
     return c.json({
       message: "Attendance marked as present",
-      data: updatedAttendance
+      data: updatedAttendance,
     });
   });
 

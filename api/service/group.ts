@@ -1,5 +1,5 @@
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
-import { GroupTable, StudentTable, UserTable } from "../db/schema/tables"
+import { GroupTable, StudentTable, subjectsToGroupsTable, UserTable } from "../db/schema/tables"
 import { eq } from 'drizzle-orm';
 import type { updateGroupType } from "../zod/update_schema";
 import type { GroupDetailDTO, GroupDTO } from "../dto/group";
@@ -33,14 +33,22 @@ export class GroupServiceClass implements GroupService {
 
   async deleteSpecificFromUUID(uuid: string): Promise<GroupDTO> {
     const specificGroup = await this.getSpecificFromUUID(uuid)
+    await this.db.delete(subjectsToGroupsTable).where(eq(subjectsToGroupsTable.group_id, uuid))
     await this.db.delete(GroupTable).where(eq(GroupTable.id, uuid))
     return specificGroup
   }
 
   async updateSpecificFromUUID(uuid: string, values: updateGroupType): Promise<GroupDTO> {
-    await this.db.update(GroupTable).set(values).where(eq(GroupTable.id, uuid))
-    const specificGroup = await this.getSpecificFromUUID(uuid)
-    return specificGroup
+    const { subject_id, ...groupFields } = values;
+    await this.db.update(GroupTable).set(groupFields).where(eq(GroupTable.id, uuid));
+    if (Array.isArray(subject_id) && subject_id.length > 0) {
+      const rowsToInsert = subject_id.map((sid) => ({
+        group_id: uuid,
+        subject_id: sid,
+      }));
+      await this.db.insert(subjectsToGroupsTable).values(rowsToInsert);
+    }
+    return this.getSpecificFromUUID(uuid);
   }
 }
 

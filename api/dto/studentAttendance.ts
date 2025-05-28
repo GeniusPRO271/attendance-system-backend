@@ -4,7 +4,6 @@ export enum AttendanceStatus {
   Present = "present",
   Absent = "absent",
   Late = "late",
-  Pending = "pending"
 }
 
 export interface StudentAttendanceDTO {
@@ -12,5 +11,5 @@ export interface StudentAttendanceDTO {
   student: StudentDetailDTO,
   status: string
   attendace_process_id: string;
-
+  lastUpdate: Date | null
 }

@@ -1,0 +1,1 @@
+ALTER TABLE "student_attendance" RENAME COLUMN "end_time" TO "lastUpdate";

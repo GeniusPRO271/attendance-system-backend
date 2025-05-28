@@ -15,7 +15,6 @@ import { REFRESH_SECRET_KEY } from "../config"
 function startAuthRoute(auth: AuthService, service: UserService, db: PostgresJsDatabase<Record<string, never>>) {
   const api = new Hono()
 
-  // Login User
   api.post('/register', zValidator('json', createUserSchema), async (c) => {
     try {
       const body = c.req.valid("json")

@@ -3,10 +3,17 @@ import { UserRole } from "../dto/user";
 import { AttendanceStatus } from "../dto/studentAttendance";
 import { AttendanceProcessStatus } from "../dto/attendanceProcess";
 
+export const updateDevice = z.object({
+  deviceUUID: z.string().uuid()
+});
+
+export type updateDeivceType = z.infer<typeof updateDevice>;
+
 export const updateGroup = z.object({
   group_name: z.string().optional(),
   direction: z.string().uuid().optional(),
   year: z.number().optional(),
+  subject_id: z.array(z.string()),
 });
 
 export type updateGroupType = z.infer<typeof updateGroup>;
@@ -73,7 +80,9 @@ export const updateStudentSchema = z.object({
 export type updateStudentSchemaType = z.infer<typeof updateStudentSchema>;
 
 export const updateStudentAttendanceSchema = z.object({
-  status: z.nativeEnum(AttendanceStatus).optional()
+  student_id: z.string().optional(),
+  status: z.nativeEnum(AttendanceStatus).optional(),
+  lastUpdate: z.date().optional()
 });
 
 export type updateStudentAttendanceType = z.infer<typeof updateStudentAttendanceSchema>;
@@ -82,4 +91,33 @@ export const updateAttendanceProcessSchema = z.object({
   status: z.nativeEnum(AttendanceProcessStatus).optional(),
 });
 
+
 export type updateAttendanceProcessType = z.infer<typeof updateAttendanceProcessSchema>;
+
+export const updateTeacherSchema = z
+  .object({
+    name: z.string().min(1).optional(),
+    email: z.string().email().optional(),
+    subjects: z
+      .array(
+        z.object({
+          id: z.string().uuid(),
+          name: z.string().min(1),
+        })
+      )
+      .optional(),
+  })
+  .refine((data) => Object.keys(data).length > 0, {
+    message: 'At least one field (name, email, or subjects) must be provided',
+  })
+
+
+export type updateTeacherSchemaType = z.infer<typeof updateTeacherSchema>;
+
+export const updateStudent = z.object({
+  name: z.string().optional(),
+  email: z.string().email().optional(),
+  group_id: z.string().optional(),
+});
+
+export type updateStudentType = z.infer<typeof updateStudent>;

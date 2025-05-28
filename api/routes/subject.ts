@@ -1,113 +1,230 @@
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
-import { SubjectServiceClass, type SubjectService } from "../service/subject";
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
+import { eq } from "drizzle-orm"; // Import eq for comparisons
+
+// Import services, schemas, builders, and database connection
+import { SubjectServiceClass, type SubjectService } from "../service/subject";
 import { createSubjectSchema } from "../zod/create_schema";
-import { insertSubjectSchema, insertSubjectToGroupSchema, subjectsToGroupsTable, SubjectTable } from "../db/schema/tables";
+import {
+  insertSubjectSchema,
+  insertSubjectToGroupSchema,
+  subjectsToGroupsTable,
+  SubjectTable,
+} from "../db/schema/tables";
 import { SubjectBuilder } from "../builders";
-import { validateUUID, validGroupParams } from "../zod/select_schema";
+import { subjectFilterSchema, validateUUID } from "../zod/select_schema"; // Assuming validGroupParams is not used here
 import { updateSubjectSchema } from "../zod/update_schema";
-import { db } from "../db";
+import { db } from "../db"; // Assuming this is your configured drizzle instance
 
-function startSubjectRoute(service: SubjectService, db: PostgresJsDatabase<Record<string, never>>) {
+/**
+ * Initializes and configures the Hono router for subject-related endpoints.
+ *
+ * @param {SubjectService} service - The service class instance for subject operations.
+ * @param {PostgresJsDatabase<Record<string, never>>} dbInstance - The Drizzle database instance.
+ * @returns {Hono} - The configured Hono router instance.
+ */
+function startSubjectRoute(
+  service: SubjectService,
+  dbInstance: PostgresJsDatabase<Record<string, never>>
+): Hono {
+  const api = new Hono();
 
-  const api = new Hono()
+  // --- POST / ---
+  // Creates a new subject and optionally associates it with groups.
+  api.post(
+    "/",
+    zValidator("json", createSubjectSchema), // Validate request body
+    async (c) => {
+      try {
+        const body = c.req.valid("json");
 
-  api.post('/', zValidator("json", createSubjectSchema), async (c) => {
-    const body = c.req.valid("json");
+        // 1. Build and validate the new subject data
+        const newSubjectData = new SubjectBuilder(body);
+        const validatedSubject = insertSubjectSchema.parse(newSubjectData); // Ensures data matches the insert schema
 
-    // Create the new subject using the body data
-    const new_subject = new SubjectBuilder(body);
-    const validated_subject = insertSubjectSchema.parse(new_subject);
+        // 2. Insert the new subject into the database
+        // Drizzle returns an array, we expect one result here
+        const insertedSubjectResult = await dbInstance
+          .insert(SubjectTable)
+          .values(validatedSubject)
+          .returning(); // Use returning() to get the inserted data
 
-    // Insert the new subject into the database
-    await db.insert(SubjectTable).values(validated_subject);
+        if (!insertedSubjectResult || insertedSubjectResult.length === 0) {
+          console.error("Failed to insert subject, no data returned.");
+          c.status(500);
+          return c.json({ message: "Failed to create subject", error: "Database insertion failed" });
+        }
 
-    // If group_ids exist, insert the relations between subject and groups
-    if (body.group_ids && body.group_ids.length > 0) {
-      for (const groupId of body.group_ids) {
-        const relationSubjectGroupBody = {
-          subject_id: validated_subject.id,
-          group_id: groupId
-        };
+        const createdSubject = insertedSubjectResult[0]; // Get the actual inserted subject
 
-        // Validate and insert the relation into the subjectsToGroupsTable
-        const relationSubjectGroup = insertSubjectToGroupSchema.parse(relationSubjectGroupBody);
-        await db.insert(subjectsToGroupsTable).values(relationSubjectGroup);
+        // 3. Handle group associations (if group_ids are provided)
+        if (body.group_ids && body.group_ids.length > 0) {
+          const relationsToInsert = body.group_ids.map((groupId) => {
+            const relationData = {
+              subject_id: createdSubject.id, // Use the ID from the actually inserted subject
+              group_id: groupId,
+            };
+            // Validate each relation before adding to the batch
+            return insertSubjectToGroupSchema.parse(relationData);
+          });
+
+          // Insert all relations in a single batch operation for efficiency
+          if (relationsToInsert.length > 0) {
+            await dbInstance
+              .insert(subjectsToGroupsTable)
+              .values(relationsToInsert);
+          }
+        }
+
+        // 4. Return success response
+        c.status(201); // Use 201 Created status code
+        return c.json({
+          message: "New subject added successfully",
+          data: createdSubject, // Return the subject data as inserted
+        });
+
+      } catch (error: any) {
+        console.error("Error creating subject:", error);
+        c.status(500); // Internal Server Error
+        return c.json({
+          message: "Failed to create subject",
+          error: error.message || "An unexpected error occurred",
+        });
       }
     }
+  );
 
-    return c.json({
-      "message": "New subject added with associated groups",
-      "data": validated_subject
-    });
+  // --- GET /all ---
+  // Retrieves all subjects from the database.
+  api.get("/all", zValidator("query", subjectFilterSchema), async (c) => {
+    try {
+      const filters = c.req.valid("query")
+      const subjectsData = await service.getAllFromQuery(filters)
+      console.log("subjectsData", subjectsData)
+      return c.json({
+        message: "All subjects retrieved successfully",
+        data: subjectsData,
+      });
+    } catch (error: any) {
+      console.error("Error fetching all subjects:", error);
+      c.status(500);
+      return c.json({
+        message: "Failed to retrieve subjects",
+        error: error.message || "An unexpected error occurred",
+      });
+    }
   });
 
-  // Get all subjects
-  api.get('/', async (c) => {
-    const subjects_data = await db.select().from(SubjectTable)
-    return c.json({
-      "message": "subjects requested",
-      "data": subjects_data
-    })
-  })
+  // --- GET /:uuid ---
+  // Retrieves a specific subject by its UUID.
+  api.get(
+    "/:uuid",
+    zValidator("param", validateUUID), // Validate UUID in path parameter
+    async (c) => {
+      try {
+        const { uuid: subjectId } = c.req.valid("param");
+        // Use the service layer to fetch the subject
+        const subject = await service.getSpecificFromUUID(subjectId);
 
-  // Get a specific subject
-  api.get("/group/:uuid", zValidator("param", validateUUID), async (c) => {
-    const groupId = c.req.valid("param").uuid
-    const subject = await service.getAllFromGroupUUID(groupId)
-    return c.json({
-      message: "specific subject data requested",
-      data: subject
-    })
-  })
+        if (!subject) {
+          c.status(404); // Not Found
+          return c.json({ message: "Subject not found" });
+        }
 
-  // Get a specific subject
-  api.get("/groups", zValidator("query", validGroupParams), async (c) => {
-    const query = c.req.valid("query")
-    const subjects = await service.getAllFromQuery(query.teacher_id, query.group_id)
-    return c.json({
-      message: "specific subject data requested",
-      data: subjects
-    })
-  })
+        return c.json({
+          message: "Specific subject data retrieved successfully",
+          data: subject,
+        });
+      } catch (error: any) {
+        console.error(`Error fetching subject ${c.req.param('uuid')}:`, error);
+        c.status(500);
+        return c.json({
+          message: "Failed to retrieve subject",
+          error: error.message || "An unexpected error occurred",
+        });
+      }
+    }
+  );
 
-  // Get a specific subject
-  api.get("/:uuid", zValidator("param", validateUUID), async (c) => {
-    const subjectId = c.req.valid("param").uuid
-    const subject = await service.getSpecificFromUUID(subjectId)
-    return c.json({
-      message: "specific subject data requested",
-      data: subject
-    })
-  })
+  // --- DELETE /:uuid ---
+  // Deletes a specific subject by its UUID.
+  api.delete(
+    "/:uuid",
+    zValidator("param", validateUUID), // Validate UUID
+    async (c) => {
+      try {
+        const { uuid: subjectId } = c.req.valid("param");
+        // Use the service layer to delete the subject
+        const subjectDeleted = await service.deleteSpecificFromUUID(subjectId);
 
-  // Delete a specific subject
-  api.delete("/:uuid", zValidator("param", validateUUID), async (c) => {
-    const subjectId = c.req.valid("param").uuid
-    const subjectDeleted = await service.deleteSpecificFromUUID(subjectId)
-    return c.json({
-      message: "Subject has been delete",
-      data: subjectDeleted
-    })
-  })
+        // Check if the service indicated successful deletion (adjust based on service return value)
+        if (!subjectDeleted) { // Assuming service returns null/undefined or throws if not found/deleted
+          c.status(404);
+          return c.json({ message: "Subject not found or could not be deleted" });
+        }
 
-  // Update an specific subject
-  api.put("/:uuid", zValidator("param", validateUUID), zValidator("json", updateSubjectSchema), async (c) => {
-    const subjectId = c.req.valid("param").uuid
-    const update = c.req.valid("json")
-    const updatedSubject = await service.updateSpecificFromUUID(subjectId, update)
+        return c.json({
+          message: "Subject deleted successfully",
+          data: subjectDeleted, // Or potentially just a success status
+        });
+      } catch (error: any) {
+        console.error(`Error deleting subject ${c.req.param('uuid')}:`, error);
+        c.status(500);
+        return c.json({
+          message: "Failed to delete subject",
+          error: error.message || "An unexpected error occurred",
+        });
+      }
+    }
+  );
 
-    return c.json({
-      message: "Subject has been updated",
-      data: updatedSubject
-    })
-  })
+  // --- PUT /:uuid ---
+  // Updates a specific subject by its UUID.
+  api.put(
+    "/:uuid",
+    zValidator("param", validateUUID), // Validate UUID
+    zValidator("json", updateSubjectSchema), // Validate request body for update
+    async (c) => {
+      try {
+        const { uuid: subjectId } = c.req.valid("param");
+        const updateData = c.req.valid("json");
 
-  return api
+        // Use the service layer to update the subject
+        const updatedSubject = await service.updateSpecificFromUUID(
+          subjectId,
+          updateData
+        );
+
+        if (!updatedSubject) { // Assuming service returns null/undefined or throws if not found
+          c.status(404);
+          return c.json({ message: "Subject not found or could not be updated" });
+        }
+
+        return c.json({
+          message: "Subject updated successfully",
+          data: updatedSubject,
+        });
+      } catch (error: any) {
+        console.error(`Error updating subject ${c.req.param('uuid')}:`, error);
+        c.status(500);
+        return c.json({
+          message: "Failed to update subject",
+          error: error.message || "An unexpected error occurred",
+        });
+      }
+    }
+  );
+
+  return api;
 }
 
-const service = new SubjectServiceClass(db)
-const SubjectRoute = startSubjectRoute(service, db)
+// --- Initialization ---
+// Create an instance of the SubjectService, passing the database connection
+const service = new SubjectServiceClass(db); // Pass the imported db instance
 
-export { SubjectRoute }
+// Create the Hono router instance by calling the setup function
+const SubjectRoute = startSubjectRoute(service, db); // Pass both service and db
+
+// Export the configured router
+export { SubjectRoute };

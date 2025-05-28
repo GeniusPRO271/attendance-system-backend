@@ -11,7 +11,7 @@ export class StudentAttendanceBuilder {
   constructor(body: createStudentAttendanceType) {
     this.id = crypto.randomUUID()
     this.student_id = body.student_id;
-    this.status = AttendanceStatus.Pending
+    this.status = AttendanceStatus.Absent
     this.attendace_process_id = body.attendace_process_id
   }
 }

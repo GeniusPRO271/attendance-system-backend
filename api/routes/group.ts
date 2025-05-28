@@ -3,12 +3,12 @@ import { db } from "../db"
 import { zValidator } from "@hono/zod-validator"
 import { createGroupSchema } from "../zod/create_schema"
 import { GroupBuilder } from "../builders"
-import { GroupTable, insertGroupSchema, insertSubjectToGroupSchema, subjectsToGroupsTable } from "../db/schema/tables"
+import { DirectionTable, GroupTable, insertGroupSchema, insertSubjectToGroupSchema, subjectsToGroupsTable } from "../db/schema/tables"
 import { validateUUID } from "../zod/select_schema"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import { GroupServiceClass, type GroupService } from "../service"
 import { updateGroup } from "../zod/update_schema"
-
+import { eq } from "drizzle-orm"
 function startGroupRoute(service: GroupService, db: PostgresJsDatabase<Record<string, never>>) {
 
   const api = new Hono()
@@ -17,19 +17,21 @@ function startGroupRoute(service: GroupService, db: PostgresJsDatabase<Record<st
   api.post('/', zValidator("json", createGroupSchema), async (c) => {
     const body = c.req.valid("json")
 
-    const new_group = insertGroupSchema.parse(new GroupBuilder(body))
+    const new_group = insertGroupSchema.parse(new GroupBuilder(body));
+    await db.insert(GroupTable).values(new_group);
 
-    if (body.subject_id) {
-      const relationSubjectGroupBody = {
-        subject_id: new_group.id,
-        group_id: body.subject_id
-      }
+    // Then create the relations for subjects_to_groups.
+    if (body.subject_id.length > 0) {
+      const relations = body.subject_id.map((subjectId) =>
+        insertSubjectToGroupSchema.parse({
+          group_id: new_group.id,  // Use the group id from the inserted group.
+          subject_id: subjectId
+        })
+      );
 
-      const relationSubjectGroup = insertSubjectToGroupSchema.parse(relationSubjectGroupBody)
-      await db.insert(subjectsToGroupsTable).values(relationSubjectGroup)
+      await db.insert(subjectsToGroupsTable).values(relations);
     }
 
-    await db.insert(GroupTable).values(new_group)
 
     return c.json({
       "message": "new group added",
@@ -38,11 +40,22 @@ function startGroupRoute(service: GroupService, db: PostgresJsDatabase<Record<st
   })
 
   // Get all groups 
-  api.get('/', async (c) => {
-    const groups = await db.select().from(GroupTable)
+  api.get('/all', async (c) => {
+    const groups = await db.select({
+      id: GroupTable.id,
+      year: GroupTable.year,
+      groupName: GroupTable.groupName,
+      direction: {
+        id: DirectionTable.id,
+        name: DirectionTable.name,
+      }
+    })
+      .from(GroupTable)
+      .leftJoin(DirectionTable, eq(GroupTable.direction, DirectionTable.id))
+
     return c.json({
-      "message": "groups requested",
-      "data": groups
+      message: "groups requested",
+      data: groups
     })
   })
 

@@ -5,7 +5,7 @@ import { zValidator } from "@hono/zod-validator";
 import { createLessonSchema } from "../zod/create_schema";
 import { insertLessonSchema, LessonTable } from "../db/schema/tables";
 import { LessonBuilder } from "../builders";
-import { validateUUID, validPagination } from "../zod/select_schema";
+import { lessonFilterSchema, validateUUID, validPagination } from "../zod/select_schema";
 import { updateLessonSchema } from "../zod/update_schema";
 import { db } from "../db";
 
@@ -26,14 +26,43 @@ function startLessonRoute(service: LessonService, db: PostgresJsDatabase<Record<
     })
   })
 
+  // Get all students 
+  api.get("/students/all", zValidator("query", lessonFilterSchema), async (c) => {
+    try {
+      const filters = c.req.valid("query");
+      const lessonsData = await service.getAllFromQuery(filters);
+      return c.json({
+        message: "All lessons retrieved successfully",
+        data: lessonsData,
+      });
+    } catch (error: any) {
+      console.error("Error fetching all lessons:", error);
+      c.status(500);
+      return c.json({
+        message: "Failed to retrieve lessons",
+        error: error.message || "An unexpected error occurred",
+      });
+    }
+  });
+
   // Get all lesson
-  api.get('/', async (c) => {
-    const lessons = await db.select().from(LessonTable)
-    return c.json({
-      "message": "Lesson requested",
-      "data": lessons
-    })
-  })
+  api.get("/all", zValidator("query", lessonFilterSchema), async (c) => {
+    try {
+      const filters = c.req.valid("query");
+      const lessonsData = await service.getAllFromQuery(filters);
+      return c.json({
+        message: "All lessons retrieved successfully",
+        data: lessonsData,
+      });
+    } catch (error: any) {
+      console.error("Error fetching all lessons:", error);
+      c.status(500);
+      return c.json({
+        message: "Failed to retrieve lessons",
+        error: error.message || "An unexpected error occurred",
+      });
+    }
+  });
 
   // Get a specific lesson
   api.get("/:uuid", zValidator("param", validateUUID), async (c) => {
@@ -66,6 +95,14 @@ function startLessonRoute(service: LessonService, db: PostgresJsDatabase<Record<
     })
   })
 
+  api.get("/teacher/next/:uuid", zValidator("param", validateUUID), async (c) => {
+    const teacherUUID = c.req.valid("param").uuid
+    const nextLesson = await service.getNextLessonFromTeacherID(teacherUUID)
+    return c.json({
+      message: "Specific lesson data requested",
+      data: nextLesson
+    })
+  })
   api.get("/group/next/:uuid", zValidator("param", validateUUID), async (c) => {
     const groupUUID = c.req.valid("param").uuid
     const groupLessons = await service.getNextLessonFromGroupUUID(groupUUID)

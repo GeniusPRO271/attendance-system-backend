@@ -27,7 +27,7 @@ function startFacultyRoute(service: FacultyService, db: PostgresJsDatabase<Recor
   })
 
   // Get all faculties
-  api.get('/', async (c) => {
+  api.get('/all', async (c) => {
     const faculties = await db.select().from(FacultyTable)
     return c.json({
       "message": "faculties requested",

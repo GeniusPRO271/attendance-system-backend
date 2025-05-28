@@ -13,7 +13,7 @@ export interface UserService {
   deleteSpecificFromUUID(uuid: string): Promise<UserDetailDTO>
   updateSpecificFromUUID(uuid: string, values: updateUserSchemaType): Promise<UserDetailDTO>
   updateSpecificStudentFromUUID(uuid: string, values: updateStudentSchemaType): Promise<UserDetailDTO | undefined>
-  addDeviceUUIDToStudent(uuid: string, deviceUUID: string): Promise<boolean>
+  addDeviceUUIDToUser(userId: string, deviceUUID: string): Promise<boolean>
 }
 
 export class UserServiceClass implements UserService {
@@ -93,16 +93,17 @@ export class UserServiceClass implements UserService {
     const studentsInfo = await this.db.select().from(StudentTable).where(eq(StudentTable.group_id, uuid))
     const users: StudentDetailDTO[] = []
 
+    console.log("studentINFO: ", studentsInfo)
     for (let index = 0; index < studentsInfo.length; index++) {
-      const userInfo = await this.db.select().from(UserTable).where(eq(UserTable.student_id, studentsInfo[index].id)).then(res => {
-        const { password, ...userWithoutPassword } = res[0];
-        return userWithoutPassword;
-      });
+      console.log("FINDING USER WITH ID: ", studentsInfo[index].id)
+      const userInfo = await this.db.select().from(UserTable).where(eq(UserTable.student_id, studentsInfo[index].id))
+
+      console.log("FOUND USERS:", userInfo)
 
       const studentDetail: StudentDetailDTO = {
         studentId: studentsInfo[index].id,
-        name: userInfo.name,
-        email: userInfo.email,
+        name: userInfo[0].name,
+        email: userInfo[0].email,
         group_id: studentsInfo[index].group_id
       }
 
@@ -136,14 +137,20 @@ export class UserServiceClass implements UserService {
     }
   }
 
-  async addDeviceUUIDToStudent(uuid: string, deviceUUID: string): Promise<boolean> {
-    const studentInfo = await this.db.select().from(StudentTable).where(eq(StudentTable.user_id, uuid)).then(res => res[0]);
+  async addDeviceUUIDToUser(userId: string, deviceUUID: string): Promise<boolean> {
+    const userInfo = await this.db.select().from(UserTable).where(eq(UserTable.id, userId)).then(res => res[0]);
 
-    if (!studentInfo) {
-      throw new Error("Student not found");
+    console.log("UPDATEING TO DEVICE UUID: ", deviceUUID)
+    if (!userInfo) {
+      throw new Error("User not found");
     }
 
-    const { device_lastChange } = studentInfo;
+    // Check if the deviceUUID is already the current one
+    if (userInfo.device_uuid === deviceUUID.toLowerCase()) {
+      return true;
+    }
+
+    const { device_lastChange } = userInfo;
 
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -151,9 +158,9 @@ export class UserServiceClass implements UserService {
     const lastChangeDate = device_lastChange ? new Date(device_lastChange) : null;
 
     if (!lastChangeDate || lastChangeDate < thirtyDaysAgo) {
-      await this.db.update(StudentTable)
-        .set({ device_uuid: deviceUUID })
-        .where(eq(StudentTable.user_id, uuid));
+      await this.db.update(UserTable)
+        .set({ device_uuid: deviceUUID.toLowerCase(), device_lastChange: new Date() })
+        .where(eq(UserTable.id, userId));
 
       return true;
     }
@@ -161,4 +168,3 @@ export class UserServiceClass implements UserService {
     return false;
   }
 }
-

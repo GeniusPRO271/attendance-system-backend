@@ -3,14 +3,16 @@ import { UserServiceClass, type UserService } from "../service"
 import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
 import { createUserSchema } from "../zod/create_schema"
-import { TeacherTable } from "../db/schema/tables"
+import { GroupTable, StudentTable, subjectsToTeacherTable, SubjectTable, TeacherTable, UserTable } from "../db/schema/tables"
 import { UserBuilder } from "../builders"
 import { validateEmail, validateUUID } from "../zod/select_schema"
-import { updateStudentSchema, updateUserSchema } from "../zod/update_schema"
+import { updateDevice, updateStudent, updateStudentSchema, updateTeacherSchema, updateUserSchema } from "../zod/update_schema"
 import { db } from "../db"
 import { SECRET_KEY } from "../config"
 import jwt from 'jsonwebtoken';
-
+import { sql } from "drizzle-orm"
+import { eq } from "drizzle-orm"
+import type { TeacherGetAll } from "../dto/user"
 function startUserRoute(service: UserService, db: PostgresJsDatabase<Record<string, never>>) {
 
   const api = new Hono()
@@ -68,6 +70,103 @@ function startUserRoute(service: UserService, db: PostgresJsDatabase<Record<stri
     })
   })
 
+  api.get("/students/all", async (c) => {
+    try {
+      console.log("getting all users")
+      const students = await db
+        .select({
+          studentId: StudentTable.id,
+          groupId: StudentTable.group_id,
+          user: {
+            id: UserTable.id,
+            name: UserTable.name,
+            email: UserTable.email,
+            role: UserTable.role,
+            deviceUuid: UserTable.device_uuid,
+            deviceLastChange: UserTable.device_lastChange
+          },
+          group: {
+            id: GroupTable.id,
+            name: GroupTable.groupName,
+          },
+        })
+        .from(StudentTable)
+        // cast the text student.user_id → uuid so it matches user.id (uuid)
+        .leftJoin(
+          UserTable,
+          eq(
+            sql`${StudentTable.user_id}::uuid`,
+            UserTable.id
+          )
+        )
+        // and likewise for group_id if needed
+        .leftJoin(
+          GroupTable,
+          eq(
+            sql`${StudentTable.group_id}::uuid`,
+            GroupTable.id
+          )
+        )
+
+      return c.json({ success: true, data: students })
+    } catch (err) {
+      console.error(err)
+      return c.json({ success: false, message: "Failed to fetch students" }, 500)
+    }
+  })
+  // Get a specific teacher
+  api.get("/teacher/all", async (c) => {
+    const rows = await db
+      .select({
+        id: UserTable.id,
+        name: UserTable.name,
+        email: UserTable.email,
+        role: UserTable.role,
+        subjectId: SubjectTable.id,
+        subjectName: SubjectTable.name,
+      })
+      .from(UserTable)
+      .leftJoin(
+        subjectsToTeacherTable,
+        eq(UserTable.teacher_id, subjectsToTeacherTable.teacher_id)
+      )
+      .leftJoin(
+        SubjectTable,
+        eq(subjectsToTeacherTable.subject_id, SubjectTable.id)
+      )
+      .where(sql`${UserTable.teacher_id} IS NOT NULL`);
+
+    const teachers: TeacherGetAll[] = [];
+
+    for (const row of rows) {
+      let teacher = teachers.find((t) => t.id === row.id);
+
+      if (!teacher) {
+        teacher = {
+          id: row.id,
+          name: row.name,
+          email: row.email,
+          role: row.role,
+          subject: [],
+        };
+        teachers.push(teacher);
+      }
+
+      if (row.subjectId && row.subjectName) {
+        teacher.subject?.push({
+          id: row.subjectId,
+          name: row.subjectName,
+        });
+      }
+    }
+
+    console.log("returning teachers: ", teachers)
+    return c.json({
+      message: "users requested",
+      data: teachers,
+    });
+  });
+
   // Get a specific teacher
   api.get("/teacher/:uuid", zValidator("param", validateUUID), async (c) => {
     const teacherId = c.req.valid("param").uuid
@@ -122,16 +221,99 @@ function startUserRoute(service: UserService, db: PostgresJsDatabase<Record<stri
   })
 
   // Update an specific student
-  api.put("/student/:uuid", zValidator("param", validateUUID), zValidator("json", updateStudentSchema), async (c) => {
-    const studentId = c.req.valid("param").uuid
-    const update = c.req.valid("json")
-    const updatedUser = await service.updateSpecificStudentFromUUID(studentId, update)
+  api.put(
+    "/student/:uuid",
+    zValidator("param", validateUUID),
+    zValidator("json", updateStudent),
+    async (c) => {
+      const studentId = c.req.valid("param").uuid;
+      const update = c.req.valid("json");
 
-    return c.json({
-      message: "User has been updated",
-      data: updatedUser
-    })
-  })
+      const { name, email, group_id } = update;
+
+      // Log for debugging
+      console.log("Updated values:", update);
+
+      // Update studentTable
+      if (group_id) {
+        await db.update(StudentTable).set({ group_id }).where(eq(StudentTable.id, studentId));
+      }
+
+      // Update userTable
+      if (name || email) {
+        await db
+          .update(UserTable)
+          .set({
+            ...(name && { name }),
+            ...(email && { email }),
+          })
+          .where(eq(UserTable.student_id, studentId));
+      }
+
+      return c.json({
+        message: "User has been updated",
+      });
+    }
+  );
+
+  api.put(
+    '/teacher/:uuid',
+    zValidator('param', validateUUID),
+    zValidator('json', updateTeacherSchema),
+    async (c) => {
+      const { uuid } = c.req.valid('param')
+      const updates = c.req.valid('json')
+
+      try {
+        // Ensure corresponding teacher record exists
+        const teacherRows = await db
+          .select({ id: TeacherTable.id })
+          .from(TeacherTable)
+          .where(eq(TeacherTable.user_id, uuid))
+
+        if (teacherRows.length === 0) {
+          return c.json({ success: false, error: 'Teacher not found' }, 404)
+        }
+
+        const teacherId = teacherRows[0].id
+
+        // Update user info
+        if (updates.name || updates.email) {
+          await db
+            .update(UserTable)
+            .set({
+              ...(updates.name && { name: updates.name }),
+              ...(updates.email && { email: updates.email }),
+            })
+            .where(eq(UserTable.id, uuid))
+        }
+
+        // Update subject associations
+        if (updates.subjects) {
+          await db.delete(subjectsToTeacherTable).where(
+            eq(subjectsToTeacherTable.teacher_id, teacherId)
+          )
+
+          if (updates.subjects.length > 0) {
+            await db.insert(subjectsToTeacherTable).values(
+              updates.subjects.map((subject) => ({
+                teacher_id: teacherId,
+                subject_id: subject.id,
+              }))
+            )
+          }
+        }
+
+        return c.json({ success: true }, 200)
+      } catch (error) {
+        console.error('Failed to update teacher', error)
+        return c.json(
+          { success: false, error: 'Unable to update teacher' },
+          500
+        )
+      }
+    }
+  )
 
   // Update an specific user
   api.put("/:uuid", zValidator("param", validateUUID), zValidator("json", updateUserSchema), async (c) => {
@@ -145,24 +327,24 @@ function startUserRoute(service: UserService, db: PostgresJsDatabase<Record<stri
     })
   })
 
-  api.post("/student/device/:uuid", zValidator("param", validateUUID), async (c) => {
-    const studentId = c.req.valid("param").uuid
-    const { deviceUUID } = await c.req.json()
+  api.post("/:uuid/device", zValidator("param", validateUUID), zValidator("json", updateDevice), async (c) => {
+    const userId = c.req.valid("param").uuid;
+    const deviceUUID = c.req.valid("json").deviceUUID
 
     if (!deviceUUID) {
       return c.json({ message: "deviceUUID is required" }, 400);
     }
 
-    const updated = await service.addDeviceUUIDToStudent(studentId, deviceUUID);
+    const updated = await service.addDeviceUUIDToUser(userId, deviceUUID);
 
     if (updated) {
       return c.json({
         message: "Device UUID has been updated",
-      });
+      }, 200);
     } else {
       return c.json({
-        message: "No update was necessary, device UUID already set or last change is not old enough",
-      });
+        message: "Cannot update device UUID - either it's already set to this value or it was changed recently (within 30 days)",
+      }, 400);
     }
   });
 

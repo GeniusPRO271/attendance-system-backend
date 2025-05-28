@@ -13,6 +13,7 @@ export interface LessonDTO {
   updatedAt: Date | null
   createdAt: Date | null;
 }
+
 export interface LessonDetailDTO {
   id: string;
   teacher_id: string;

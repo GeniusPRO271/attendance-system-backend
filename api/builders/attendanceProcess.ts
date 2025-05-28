@@ -23,6 +23,7 @@ export class AttendanceProcessBuilder {
     const group = await groupService.getSpecificFromUUID(groupID)
     const studentList = group.students
 
+    console.log("studentList: ", studentList)
     for (let index = 0; index < studentList.length; index++) {
       const studentAttendance = new StudentAttendanceBuilder({ student_id: studentList[index].studentId, attendace_process_id: attendance_process.id })
       const new_StudentAttendance = insertStudentAttendanceSchema.parse(studentAttendance)

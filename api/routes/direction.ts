@@ -2,13 +2,13 @@ import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
 import { createDirectionSchema } from "../zod/create_schema"
-import { DirectionTable, insertDirectionSchema } from "../db/schema/tables"
+import { DirectionTable, FacultyTable, insertDirectionSchema } from "../db/schema/tables"
 import { DirectionBuilder } from "../builders"
 import { validateUUID } from "../zod/select_schema"
 import { db } from "../db"
 import { DirectionServiceClass, type DirectionService } from "../service"
 import { updateDirection } from "../zod/update_schema"
-
+import { eq } from "drizzle-orm"
 function startDirectionRoute(service: DirectionService, db: PostgresJsDatabase<Record<string, never>>) {
   const api = new Hono()
 
@@ -27,8 +27,21 @@ function startDirectionRoute(service: DirectionService, db: PostgresJsDatabase<R
   })
 
   // Get all direction
-  api.get('/', async (c) => {
-    const directions = await db.select().from(DirectionTable)
+  api.get('/all', async (c) => {
+    const directions = await db
+      .select({
+        id: DirectionTable.id,
+        name: DirectionTable.name,
+        code: DirectionTable.code,
+        faculty: {
+          id: FacultyTable.id,
+          name: FacultyTable.name,
+        },
+      })
+      .from(DirectionTable)
+      .leftJoin(FacultyTable, eq(DirectionTable.faculty, FacultyTable.id));
+
+    console.log("direction: ", directions)
     return c.json({
       "message": "directions requested",
       "data": directions

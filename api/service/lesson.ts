@@ -1,9 +1,10 @@
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import { isNextWeek, isThisWeek, isToday } from "../utils"
-import { AttendanceProcessTable, GroupTable, LessonTable, SubjectTable, UserTable } from "../db/schema/tables"
-import { and, count, eq, gt } from 'drizzle-orm';
+import { AttendanceProcessTable, GroupTable, LessonTable, SubjectTable, TeacherTable, UserTable } from "../db/schema/tables"
+import { and, count, eq, exists, gt, gte, lte, sql } from 'drizzle-orm';
 import type { updateLessonSchemaType } from "../zod/update_schema";
 import type { LessonDetailDTO, LessonDTO, LessonDTOPagination } from "../dto/lesson";
+import type { lessonFilterSchemaType } from "../zod/select_schema";
 
 export interface LessonService {
   getSpecificFromUUID(uuid: string): Promise<LessonDetailDTO>
@@ -12,6 +13,8 @@ export interface LessonService {
   updateSpecificFromUUID(uuid: string, values: updateLessonSchemaType): Promise<LessonDetailDTO>
   getNextLessonFromGroupUUID(uuid: string): Promise<LessonDetailDTO | null>
   getLessonsFromGroupUUID(uuid: string): Promise<LessonDetailDTO[]>
+  getNextLessonFromTeacherID(teacherID: string): Promise<LessonDetailDTO | null>
+  getAllFromQuery(filters: lessonFilterSchemaType): Promise<LessonDetailDTO[]>
 }
 
 export class LessonServiceClass implements LessonService {
@@ -44,6 +47,132 @@ export class LessonServiceClass implements LessonService {
 
     }
     return specificLesson
+  }
+
+  async getAllFromQuery(filters: lessonFilterSchemaType): Promise<LessonDetailDTO[]> {
+    const conditions = []; // Array to hold filter conditions
+
+    // Filter by lesson ID
+    if (filters.id) {
+      conditions.push(eq(LessonTable.id, filters.id));
+    }
+
+    // Filter by teacher ID
+    if (filters.teacher_id) {
+      conditions.push(eq(LessonTable.teacher_id, filters.teacher_id));
+    }
+
+
+    // Filter by subject ID
+    if (filters.subject_id) {
+      conditions.push(eq(LessonTable.subject_id, filters.subject_id));
+    }
+
+    // Filter by attendance process ID
+    if (filters.attendance_process_id) {
+      conditions.push(eq(LessonTable.attendance_process_id, filters.attendance_process_id));
+    }
+
+    // Filter by start time (assuming filters.start_time is in ISO format)
+    if (filters.start_time) {
+      const startDate = new Date(filters.start_time);
+      if (!isNaN(startDate.getTime())) {
+        conditions.push(gte(LessonTable.start_time, startDate));
+      } else {
+        throw new Error('Invalid start_time format');
+      }
+    }
+
+    // Filter by end time (assuming filters.end_time is in ISO format)
+    if (filters.end_time) {
+      const endDate = new Date(filters.end_time);
+      if (!isNaN(endDate.getTime())) {
+        conditions.push(lte(LessonTable.end_time, endDate));
+      } else {
+        throw new Error('Invalid end_time format');
+      }
+    }
+
+    // Construct the base query to select from the LessonTable
+    const baseQuery = this.db.select().from(LessonTable);
+
+    // Add conditions to the base query if any filters are provided
+    let finalQuery;
+    if (conditions.length > 0) {
+      finalQuery = baseQuery.where(and(...conditions));
+    } else {
+      finalQuery = baseQuery;
+    }
+
+    // Execute the query to get the lesson data
+    const lessonsData = await finalQuery;
+
+    // Fetch the necessary related data (teacher, subject, group, attendance process)
+    const lessonsWithDetails = await Promise.all(lessonsData.map(async (lesson) => {
+      // Fetch teacher details
+      const teacher = await this.db
+        .select()
+        .from(TeacherTable)
+        .where(eq(TeacherTable.id, lesson.teacher_id))
+        .limit(1)
+        .then(rows => rows[0]);  // Use .limit(1) and then get the first row
+
+      const user = await this.db
+        .select()
+        .from(UserTable)
+        .where(eq(UserTable.teacher_id, teacher.id))
+        .limit(1)
+        .then(rows => rows[0]);  // Use .limit(1) and then get the first row
+      //
+      const subject = await this.db
+        .select()
+        .from(SubjectTable)
+        .where(eq(SubjectTable.id, lesson.subject_id))
+        .limit(1)
+        .then(rows => rows[0]);  // Use .limit(1) and then get the first row
+
+      // Fetch group details
+      const group = await this.db
+        .select()
+        .from(GroupTable)
+        .where(eq(GroupTable.id, lesson.group_id))
+        .limit(1)
+        .then(rows => rows[0]);  // Use .limit(1) and then get the first row
+
+      // Fetch attendance process details
+      const attendanceProcess = await this.db
+        .select()
+        .from(AttendanceProcessTable)
+        .where(eq(AttendanceProcessTable.id, lesson.attendance_process_id))
+        .limit(1)
+        .then(rows => rows[0]);  // Use .limit(1) and then get the first row
+
+      // Return the detailed lesson data
+      return {
+        id: lesson.id,
+        teacher_id: lesson.teacher_id,
+        subject_id: lesson.subject_id,
+        group_id: lesson.group_id,
+        attendance_process_id: lesson.attendance_process_id,
+        attendance_process: attendanceProcess,
+        teacher: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          teacher_id: user.teacher_id,
+        },
+        subject: subject,
+        group: group,
+        start_time: lesson.start_time,
+        end_time: lesson.end_time,
+        status: "now",
+        updatedAt: lesson.updatedAt,
+        createdAt: lesson.createdAt,
+      };
+    }));
+
+    // Return the lessons with detailed information as an array of LessonDetailDTO
+    return lessonsWithDetails;
   }
 
   async deleteSpecificFromUUID(uuid: string): Promise<LessonDetailDTO> {
@@ -157,7 +286,14 @@ export class LessonServiceClass implements LessonService {
       .limit(1)
       .then(res => res[0] ?? null);
 
-    if (!nextLesson) return null;
+
+    console.log("uuid: ", uuid)
+    console.log("stage 1 nextLesson: ", nextLesson)
+
+    if (!nextLesson) {
+      const nextLesson = await this.getNextLessonFromTeacherID(uuid)
+      return nextLesson
+    }
 
     const lessonSubject = await this.db.select().from(SubjectTable).where(eq(SubjectTable.id, nextLesson.subject_id)).then(res => res[0]);
     const group = await this.db.select().from(GroupTable).where(eq(GroupTable.id, nextLesson.group_id)).then(res => res[0]);
@@ -206,7 +342,53 @@ export class LessonServiceClass implements LessonService {
         group: group
       });
     }
+
+
     return lessonDetails;
   }
 
+  async getNextLessonFromTeacherID(teacherID: string): Promise<LessonDetailDTO | null> {
+    const nextLesson = await this.db.select()
+      .from(LessonTable)
+      .where(and(eq(LessonTable.teacher_id, teacherID), gt(LessonTable.start_time, new Date())))
+      .orderBy(LessonTable.start_time)
+      .limit(1)
+      .then(res => res[0] ?? null);
+
+    if (!nextLesson) return null;
+
+    const lessonSubject = await this.db.select()
+      .from(SubjectTable)
+      .where(eq(SubjectTable.id, nextLesson.subject_id))
+      .then(res => res[0]);
+
+    const group = await this.db.select()
+      .from(GroupTable)
+      .where(eq(GroupTable.id, nextLesson.group_id))
+      .then(res => res[0]);
+
+    const teacher = await this.db.select()
+      .from(UserTable)
+      .where(eq(UserTable.teacher_id, nextLesson.teacher_id))
+      .then(res => res[0]);
+
+    const attendance_process = await this.db.select()
+      .from(AttendanceProcessTable)
+      .where(eq(AttendanceProcessTable.id, nextLesson.attendance_process_id))
+      .then(res => res[0]);
+
+    return {
+      ...nextLesson,
+      status: this.getLessonStatus(nextLesson),
+      subject: lessonSubject,
+      attendance_process,
+      teacher: {
+        id: teacher.id,
+        name: teacher.name,
+        email: teacher.email,
+        teacher_id: teacher.teacher_id
+      },
+      group: group
+    };
+  }
 }

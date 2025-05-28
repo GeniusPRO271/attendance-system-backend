@@ -71,6 +71,27 @@
       "when": 1743056714745,
       "tag": "0009_true_bloodaxe",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1745204288660,
+      "tag": "0010_bouncy_infant_terrible",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1746389887790,
+      "tag": "0011_green_gambit",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1746389940591,
+      "tag": "0012_naive_thunderbolt_ross",
+      "breakpoints": true
     }
   ]
 }
