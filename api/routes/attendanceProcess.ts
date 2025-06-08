@@ -1,6 +1,6 @@
 import { zValidator } from "@hono/zod-validator"
 import { Hono } from "hono"
-import { validateUUID, validDate } from "../zod/select_schema"
+import { validateUUID } from "../zod/select_schema"
 import { AttendanceProcessServiceClass, type AttendanceProcessService } from "../service/attendanceProcess"
 import { db } from "../db"
 import { updateAttendanceProcessSchema } from "../zod/update_schema"
@@ -45,7 +45,6 @@ function startAttendanceProcessRoute(service: AttendanceProcessService, qrCodeGe
 
   // Update specific attendance process
   api.put("/:uuid", zValidator("param", validateUUID), zValidator("json", updateAttendanceProcessSchema), async (c) => {
-    console.log("updating attendanceProcess")
     const attendanceProcessId = c.req.valid("param").uuid
     const update = c.req.valid("json")
     const attendanceProcess = await service.updateSpecificFromUUID(attendanceProcessId, update)
